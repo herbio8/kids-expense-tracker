@@ -33,6 +33,9 @@ for each row execute function public.handle_new_user();
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "Authenticated users can read all profiles" on public.profiles;
+drop policy if exists "Users can update their own profile" on public.profiles;
+
 create policy "Authenticated users can read all profiles"
   on public.profiles for select
   using (auth.role() = 'authenticated');
@@ -51,6 +54,10 @@ create table if not exists public.kids (
 );
 
 alter table public.kids enable row level security;
+
+drop policy if exists "Authenticated users can read all kids" on public.kids;
+drop policy if exists "Authenticated users can insert kids" on public.kids;
+drop policy if exists "Authenticated users can update kids" on public.kids;
 
 create policy "Authenticated users can read all kids"
   on public.kids for select
@@ -87,6 +94,11 @@ create index if not exists expenses_category_idx on public.expenses (category);
 -- can read/write all rows. Nobody unauthenticated can touch anything.
 alter table public.expenses enable row level security;
 
+drop policy if exists "Authenticated users can read all expenses" on public.expenses;
+drop policy if exists "Authenticated users can insert expenses" on public.expenses;
+drop policy if exists "Authenticated users can update expenses" on public.expenses;
+drop policy if exists "Authenticated users can delete expenses" on public.expenses;
+
 create policy "Authenticated users can read all expenses"
   on public.expenses for select
   using (auth.role() = 'authenticated');
@@ -110,6 +122,10 @@ create policy "Authenticated users can delete expenses"
 insert into storage.buckets (id, name, public)
 values ('receipts', 'receipts', false)
 on conflict (id) do nothing;
+
+drop policy if exists "Authenticated users can upload receipts" on storage.objects;
+drop policy if exists "Authenticated users can view receipts" on storage.objects;
+drop policy if exists "Authenticated users can delete receipts" on storage.objects;
 
 create policy "Authenticated users can upload receipts"
   on storage.objects for insert
