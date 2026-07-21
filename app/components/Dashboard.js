@@ -7,45 +7,90 @@ const emptyForm = {
   date: new Date().toISOString().slice(0, 10),
   amount: "",
   category: "Education",
-  kid_name: "",
+  kid_id: "",
   notes: "",
   reimbursement_requested: false,
 };
 
 export default function Dashboard({ session }) {
   const [expenses, setExpenses] = useState([]);
+  const [kids, setKids] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [creatingKid, setCreatingKid] = useState(false);
+  const [newKidName, setNewKidName] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterKid, setFilterKid] = useState("");
   const [filterReimbursed, setFilterReimbursed] = useState("");
 
   useEffect(() => {
     loadExpenses();
+    loadKids();
   }, []);
 
   async function loadExpenses() {
     const { data, error } = await supabase
       .from("expenses")
-      .select("*")
+      .select("*, kids(name)")
       .order("date", { ascending: false });
-    if (!error) setExpenses(data);
+
+    if (!error) setExpenses(data || []);
+  }
+
+  async function loadKids() {
+    const { data, error } = await supabase
+      .from("kids")
+      .select("id, name")
+      .order("name", { ascending: true });
+
+    if (!error) setKids(data || []);
+  }
+
+  async function handleAddKid(e) {
+    e.preventDefault();
+    const trimmedName = newKidName.trim();
+    if (!trimmedName) return;
+
+    setCreatingKid(true);
+    const { data, error } = await supabase
+      .from("kids")
+      .insert({
+        name: trimmedName,
+        created_by: session.user.id,
+      })
+      .select("id, name")
+      .single();
+
+    setCreatingKid(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setKids((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewKidName("");
+    setForm((prev) => ({ ...prev, kid_id: data.id }));
   }
 
   async function handleAddExpense(e) {
     e.preventDefault();
     if (!form.amount || Number(form.amount) <= 0) return;
+    if (!form.kid_id) {
+      alert("Please select a child before saving the expense.");
+      return;
+    }
+
     setSaving(true);
 
-    // 1. Insert the expense row first so we have an id to namespace the receipt under
     const { data: inserted, error: insertError } = await supabase
       .from("expenses")
       .insert({
         date: form.date,
         amount: Number(form.amount),
         category: form.category,
-        kid_name: form.kid_name || null,
+        kid_id: form.kid_id || null,
         notes: form.notes || null,
         added_by: session.user.id,
         reimbursement_requested: form.reimbursement_requested,
@@ -59,7 +104,6 @@ export default function Dashboard({ session }) {
       return;
     }
 
-    // 2. If a receipt file was attached, upload it and save its storage path
     if (file) {
       const path = `${session.user.id}/${inserted.id}/${file.name}`;
       const { error: uploadError } = await supabase.storage
@@ -76,7 +120,7 @@ export default function Dashboard({ session }) {
       }
     }
 
-    setForm(emptyForm);
+    setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) });
     setFile(null);
     setSaving(false);
     loadExpenses();
@@ -92,6 +136,7 @@ export default function Dashboard({ session }) {
           : null,
       })
       .eq("id", expense.id);
+
     if (!error) loadExpenses();
   }
 
@@ -104,14 +149,16 @@ export default function Dashboard({ session }) {
   async function viewReceipt(path) {
     const { data, error } = await supabase.storage
       .from("receipts")
-      .createSignedUrl(path, 60); // link valid for 60 seconds
+      .createSignedUrl(path, 60);
+
     if (!error) window.open(data.signedUrl, "_blank");
   }
 
   const filtered = expenses.filter((e) => {
+    const kidName = e.kids?.name || "";
+
     if (filterCategory && e.category !== filterCategory) return false;
-    if (filterKid && !(e.kid_name || "").toLowerCase().includes(filterKid.toLowerCase()))
-      return false;
+    if (filterKid && !kidName.toLowerCase().includes(filterKid.toLowerCase())) return false;
     if (filterReimbursed === "yes" && !e.reimbursement_requested) return false;
     if (filterReimbursed === "no" && e.reimbursement_requested) return false;
     return true;
@@ -143,73 +190,98 @@ export default function Dashboard({ session }) {
         <StatCard label="Awaiting reimbursement" value={pendingReimbursement} />
       </div>
 
-      <form onSubmit={handleAddExpense} className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-        <p className="text-sm font-medium mb-3">Add expense</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-          <input
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-            className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-          />
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Amount"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-          />
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-          >
-            <option value="Education">Education</option>
-            <option value="Aftercare">Aftercare</option>
-          </select>
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+        <p className="text-sm font-medium mb-3">Add child</p>
+        <form onSubmit={handleAddKid} className="flex flex-wrap gap-2 mb-4">
           <input
             type="text"
-            placeholder="Kid's name"
-            value={form.kid_name}
-            onChange={(e) => setForm({ ...form, kid_name: e.target.value })}
-            className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+            placeholder="Child's name"
+            value={newKidName}
+            onChange={(e) => setNewKidName(e.target.value)}
+            className="border border-gray-300 rounded-md px-2 py-1.5 text-sm flex-1 min-w-[180px]"
           />
-        </div>
-        <input
-          type="text"
-          placeholder="Notes (e.g. tuition, camp, supplies)"
-          value={form.notes}
-          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-3"
-        />
-        <div className="flex flex-wrap items-center gap-4 mb-3">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <button
+            type="submit"
+            disabled={creatingKid}
+            className="bg-gray-900 text-white rounded-md px-4 py-1.5 text-sm font-medium disabled:opacity-50"
+          >
+            {creatingKid ? "Adding..." : "Add child"}
+          </button>
+        </form>
+
+        <p className="text-sm font-medium mb-3">Add expense</p>
+        <form onSubmit={handleAddExpense}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
             <input
-              type="checkbox"
-              checked={form.reimbursement_requested}
-              onChange={(e) => setForm({ ...form, reimbursement_requested: e.target.checked })}
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
             />
-            Reimbursement requested
-          </label>
-          <label className="text-sm text-gray-600">
-            Receipt:{" "}
             <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => setFile(e.target.files[0] || null)}
-              className="text-xs"
+              type="number"
+              step="0.01"
+              placeholder="Amount"
+              value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
             />
-          </label>
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-gray-900 text-white rounded-md px-4 py-1.5 text-sm font-medium disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Add expense"}
-        </button>
-      </form>
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+            >
+              <option value="Education">Education</option>
+              <option value="Aftercare">Aftercare</option>
+            </select>
+            <select
+              value={form.kid_id}
+              onChange={(e) => setForm({ ...form, kid_id: e.target.value })}
+              className="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+            >
+              <option value="">Select child</option>
+              {kids.map((kid) => (
+                <option key={kid.id} value={kid.id}>
+                  {kid.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <input
+            type="text"
+            placeholder="Notes (e.g. tuition, camp, supplies)"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm mb-3"
+          />
+          <div className="flex flex-wrap items-center gap-4 mb-3">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={form.reimbursement_requested}
+                onChange={(e) => setForm({ ...form, reimbursement_requested: e.target.checked })}
+              />
+              Reimbursement requested
+            </label>
+            <label className="text-sm text-gray-600">
+              Receipt: {" "}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setFile(e.target.files[0] || null)}
+                className="text-xs"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="bg-gray-900 text-white rounded-md px-4 py-1.5 text-sm font-medium disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Add expense"}
+          </button>
+        </form>
+      </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
         <select
@@ -255,7 +327,7 @@ export default function Dashboard({ session }) {
               </span>
               <div>
                 <div>
-                  {e.kid_name || "Unspecified"}
+                  {e.kids?.name || "Unspecified"}
                   {e.notes ? ` — ${e.notes}` : ""}
                 </div>
                 <div className="text-xs text-gray-400 flex items-center gap-2">
