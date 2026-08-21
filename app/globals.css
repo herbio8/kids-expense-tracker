@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-bg: #f7f3eb;
+  --color-surface: #fffdf9;
+  --color-surface-strong: #f4e8da;
+  --color-primary: #8a6a4b;
+  --color-primary-strong: #6f5339;
+  --color-accent: #d8a77a;
+  --color-accent-soft: #f6dfc9;
+  --color-text: #4a3b2f;
+  --color-muted: #8f7d6f;
+  --color-border: #e8dccf;
+}
+
+body {
+  background: linear-gradient(135deg, var(--color-bg) 0%, #fdf8f1 100%);
+  color: var(--color-text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}

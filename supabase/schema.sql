@@ -86,6 +86,13 @@ create table if not exists public.expenses (
   receipt_url text
 );
 
+alter table public.expenses add column if not exists kid_id uuid references public.kids(id) on delete set null;
+alter table public.expenses add column if not exists notes text;
+alter table public.expenses add column if not exists added_by uuid references auth.users(id) on delete cascade;
+alter table public.expenses add column if not exists reimbursement_requested boolean not null default false;
+alter table public.expenses add column if not exists reimbursement_date date;
+alter table public.expenses add column if not exists receipt_url text;
+
 create index if not exists expenses_date_idx on public.expenses (date desc);
 create index if not exists expenses_category_idx on public.expenses (category);
 

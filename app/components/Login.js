@@ -19,30 +19,32 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[var(--color-bg)]">
       <form
         onSubmit={handleLogin}
-        className="w-full max-w-sm bg-white border border-gray-200 rounded-xl p-6 shadow-sm"
+        className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[0_10px_30px_rgba(138,106,75,0.12)]"
       >
-        <h1 className="text-lg font-medium mb-1">Kids expense tracker</h1>
-        <p className="text-sm text-gray-500 mb-6">Sign in to continue</p>
+        <div className="mb-6 rounded-xl bg-[var(--color-accent-soft)] p-3 text-center">
+          <h1 className="text-lg font-semibold text-[var(--color-primary-strong)]">Kids expense tracker</h1>
+          <p className="text-sm text-[var(--color-muted)]">Sign in to continue</p>
+        </div>
 
-        <label className="block text-sm text-gray-600 mb-1">Email</label>
+        <label className="block text-sm text-[var(--color-text)] mb-1">Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4 text-sm"
+          className="w-full border border-[var(--color-border)] rounded-md px-3 py-2 mb-4 text-sm bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
 
-        <label className="block text-sm text-gray-600 mb-1">Password</label>
+        <label className="block text-sm text-[var(--color-text)] mb-1">Password</label>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4 text-sm"
+          className="w-full border border-[var(--color-border)] rounded-md px-3 py-2 mb-4 text-sm bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
 
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -50,12 +52,12 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gray-900 text-white rounded-md py-2 text-sm font-medium disabled:opacity-50"
+          className="w-full rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
 
-        <p className="text-xs text-gray-400 mt-4">
+        <p className="text-xs text-[var(--color-muted)] mt-4">
           Users are created in Supabase Dashboard -&gt; Authentication -&gt; Users.
           Add yourself and your wife there — no public sign-up form exists.
         </p>
