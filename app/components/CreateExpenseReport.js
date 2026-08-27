@@ -2,23 +2,56 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { generateHTMLReport } from "../utils/reportGenerator";
 
 export default function CreateExpenseReport({ session, onSuccess }) {
   const [expenses, setExpenses] = useState([]);
+  const [existingReports, setExistingReports] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [reportName, setReportName] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  // Filter states
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [filterKids, setFilterKids] = useState([]);
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterReimbursedReq, setFilterReimbursedReq] = useState("");
+  const [filterReimbursedGranted, setFilterReimbursedGranted] = useState("");
+
   useEffect(() => {
     loadExpenses();
+    loadExistingReports();
   }, []);
 
+  async function loadExistingReports() {
+    const { data, error } = await supabase
+      .from("expense_report")
+      .select("*")
+      .order("created_at", { ascending: false });
+      
+    if (!error) {
+      setExistingReports(data || []);
+    }
+  }
+
+  async function viewReportFile(reportId) {
+    const path = `${session.user.id}/reports/${reportId}.html`;
+    const { data, error } = await supabase.storage
+      .from("receipts")
+      .createSignedUrl(path, 60);
+
+    if (error) {
+      alert("Could not find the HTML report file.");
+    } else {
+      window.open(data.signedUrl, "_blank");
+    }
+  }
+
   async function loadExpenses() {
-    // Only fetch expenses that haven't been requested for reimbursement yet
     const { data, error } = await supabase
       .from("expense")
       .select("*")
-      .eq("reimbursement_requested", false)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -54,63 +87,37 @@ export default function CreateExpenseReport({ session, onSuccess }) {
     );
   }
 
-  function generateHTMLReport(selectedExpensesList, finalReportName) {
-    const grouped = selectedExpensesList.reduce((acc, exp) => {
-      const kidName = exp.child ? `${exp.child.first_name} ${exp.child.last_name}`.trim() : "Unspecified";
-      if (!acc[kidName]) acc[kidName] = [];
-      acc[kidName].push(exp);
-      return acc;
-    }, {});
+  const uniqueChildNames = [...new Set(expenses.map(e => e.child ? `${e.child.first_name} ${e.child.last_name}`.trim() : "").filter(Boolean))];
 
-    let html = `<!DOCTYPE html><html><head><title>${finalReportName}</title>
-    <style>
-      body { font-family: sans-serif; padding: 20px; color: #333; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-      th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-      th { background-color: #f9fafb; font-weight: bold; }
-      .text-right { text-align: right; }
-      h2 { margin-top: 30px; color: #111; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-    </style></head><body>`;
-    
-    html += `<h1>${finalReportName}</h1>`;
-    html += `<p>Generated on ${new Date().toLocaleDateString()}</p>`;
-
-    let grandTotal = 0;
-
-    for (const [kidName, exps] of Object.entries(grouped)) {
-      html += `<h2>${kidName}</h2>`;
-      html += `<table><thead><tr>
-        <th>Date</th>
-        <th>Category</th>
-        <th>Description</th>
-        <th>Receipt</th>
-        <th>Invoice</th>
-        <th>Proof</th>
-        <th class="text-right">Amount</th>
-      </tr></thead><tbody>`;
-      
-      let kidTotal = 0;
-      for (const exp of exps) {
-        kidTotal += Number(exp.amount);
-        const date = new Date(exp.created_at).toISOString().slice(0, 10);
-        html += `<tr>
-          <td>${date}</td>
-          <td style="text-transform: capitalize;">${exp.category}</td>
-          <td>${exp.description || ""}</td>
-          <td>${exp.receipt_url ? "Attached" : ""}</td>
-          <td>${exp.invoice_url ? "Attached" : ""}</td>
-          <td>${exp.proof_of_payment_url ? "Attached" : ""}</td>
-          <td class="text-right">$${Number(exp.amount).toFixed(2)}</td>
-        </tr>`;
-      }
-      grandTotal += kidTotal;
-      html += `</tbody><tfoot><tr><th colspan="6" class="text-right">Total for ${kidName}:</th><th class="text-right">$${kidTotal.toFixed(2)}</th></tr></tfoot></table>`;
+  const handleKidInputChange = (e) => {
+    const val = e.target.value;
+    if (val && !filterKids.includes(val)) {
+      setFilterKids([...filterKids, val]);
     }
-    
-    html += `<h2>Grand Total: $${grandTotal.toFixed(2)}</h2>`;
-    html += `</body></html>`;
-    return html;
-  }
+  };
+
+  const removeKidFilter = (kidToRemove) => {
+    setFilterKids(filterKids.filter(k => k !== kidToRemove));
+  };
+
+  const removeCategoryFilter = (catToRemove) => {
+    setFilterCategories(filterCategories.filter(c => c !== catToRemove));
+  };
+
+  const filteredExpenses = expenses.filter((e) => {
+    const kidName = e.child ? `${e.child.first_name} ${e.child.last_name}`.trim() : "";
+    const dateFormatted = new Date(e.created_at).toISOString().slice(0, 10);
+
+    if (filterCategories.length > 0 && !filterCategories.includes(e.category)) return false;
+    if (filterKids.length > 0 && !filterKids.includes(kidName)) return false;
+    if (filterStartDate && dateFormatted < filterStartDate) return false;
+    if (filterEndDate && dateFormatted > filterEndDate) return false;
+    if (filterReimbursedReq === "yes" && !e.reimbursement_requested) return false;
+    if (filterReimbursedReq === "no" && e.reimbursement_requested) return false;
+    if (filterReimbursedGranted === "yes" && !e.reimbursement_granted) return false;
+    if (filterReimbursedGranted === "no" && e.reimbursement_granted) return false;
+    return true;
+  });
 
   async function handleGenerateReport(e) {
     e.preventDefault();
@@ -185,61 +192,177 @@ export default function CreateExpenseReport({ session, onSuccess }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Create Expense Report</h2>
-      
-      {expenses.length === 0 ? (
-        <p className="text-sm text-[var(--color-muted)]">No outstanding expenses to report. All expenses have already had a reimbursement requested!</p>
-      ) : (
-        <form onSubmit={handleGenerateReport} className="flex flex-col gap-5">
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-muted)] mb-1">Report Name (Optional)</label>
-            <input
-              type="text"
-              placeholder={`Expense Report - ${new Date().toLocaleDateString()}`}
-              value={reportName}
-              onChange={(e) => setReportName(e.target.value)}
-              className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-          </div>
-          
-          <div>
-            <p className="mb-2 text-sm font-medium text-[var(--color-primary-strong)]">Select Expenses to Include</p>
-            <div className="rounded-md border border-[var(--color-border)] divide-y divide-[var(--color-border)] max-h-96 overflow-y-auto">
-              {expenses.map((e) => (
-                <label key={e.id} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[var(--color-accent-soft)] transition">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(e.id)}
-                    onChange={() => toggleSelection(e.id)}
-                    className="mt-1 self-start"
-                  />
-                  <div className="flex-1 flex justify-between text-sm">
-                    <div>
-                      <span className="font-medium">{e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unknown"}</span>
-                      <span className="text-[var(--color-muted)] ml-2 capitalize">— {e.category}</span>
-                      {e.description && <div className="text-xs text-[var(--color-muted)] mt-1">{e.description}</div>}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">${Number(e.amount).toFixed(2)}</div>
-                      <div className="text-xs text-[var(--color-muted)]">{new Date(e.created_at).toISOString().slice(0,10)}</div>
-                    </div>
-                  </div>
-                </label>
-              ))}
+    <div className="flex flex-col gap-6">
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Create Expense Report</h2>
+        
+        {expenses.length === 0 ? (
+          <p className="text-sm text-[var(--color-muted)]">No outstanding expenses to report. All expenses have already had a reimbursement requested!</p>
+        ) : (
+          <form onSubmit={handleGenerateReport} className="flex flex-col gap-5">
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-muted)] mb-1">Report Name (Optional)</label>
+              <input
+                type="text"
+                placeholder={`Expense Report - ${new Date().toLocaleDateString()}`}
+                value={reportName}
+                onChange={(e) => setReportName(e.target.value)}
+                className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
             </div>
+            
+            <div>
+              <p className="mb-2 text-sm font-medium text-[var(--color-primary-strong)]">Filter Expenses</p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+                  {filterCategories.map(cat => (
+                    <span key={cat} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs capitalize">
+                      {cat === "education" ? "Education" : "Aftercare"}
+                      <button type="button" onClick={() => removeCategoryFilter(cat)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+                    </span>
+                  ))}
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && !filterCategories.includes(val)) {
+                        setFilterCategories([...filterCategories, val]);
+                      }
+                    }}
+                    className="bg-transparent px-1 text-sm outline-none"
+                  >
+                    <option value="" disabled hidden>{filterCategories.length === 0 ? "Filter category..." : "Add category..."}</option>
+                    {!filterCategories.includes("education") && <option value="education">Education</option>}
+                    {!filterCategories.includes("aftercare") && <option value="aftercare">Aftercare</option>}
+                  </select>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+                  {filterKids.map(kid => (
+                    <span key={kid} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs">
+                      {kid} 
+                      <button type="button" onClick={() => removeKidFilter(kid)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+                    </span>
+                  ))}
+                  <select
+                    value=""
+                    onChange={handleKidInputChange}
+                    className="bg-transparent px-1 text-sm outline-none min-w-[120px]"
+                  >
+                    <option value="" disabled hidden>{filterKids.length === 0 ? "Filter child..." : "Add child..."}</option>
+                    {uniqueChildNames.filter(n => !filterKids.includes(n)).map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <input
+                    type="date"
+                    title="Start date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                  <span className="text-[var(--color-muted)] text-sm">-</span>
+                  <input
+                    type="date"
+                    title="End date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                </div>
+                <select
+                  value={filterReimbursedReq}
+                  onChange={(e) => setFilterReimbursedReq(e.target.value)}
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                >
+                  <option value="">Reimbursement Req: Any</option>
+                  <option value="yes">Requested</option>
+                  <option value="no">Not Requested</option>
+                </select>
+                <select
+                  value={filterReimbursedGranted}
+                  onChange={(e) => setFilterReimbursedGranted(e.target.value)}
+                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                >
+                  <option value="">Reimbursement Received: Any</option>
+                  <option value="yes">Received</option>
+                  <option value="no">Not Received</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-[var(--color-primary-strong)]">Select Expenses to Include</p>
+              <div className="rounded-md border border-[var(--color-border)] divide-y divide-[var(--color-border)] max-h-96 overflow-y-auto">
+                {filteredExpenses.length === 0 && (
+                  <p className="p-3 text-sm text-[var(--color-muted)]">No expenses match these filters.</p>
+                )}
+                {filteredExpenses.map((e) => (
+                  <label key={e.id} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[var(--color-accent-soft)] transition">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(e.id)}
+                      onChange={() => toggleSelection(e.id)}
+                      className="mt-1 self-start"
+                    />
+                    <div className="flex-1 flex justify-between text-sm">
+                      <div>
+                        <span className="font-medium">{e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unknown"}</span>
+                        <span className="text-[var(--color-muted)] ml-2 capitalize">— {e.category}</span>
+                        {e.description && <div className="text-xs text-[var(--color-muted)] mt-1">{e.description}</div>}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">${Number(e.amount).toFixed(2)}</div>
+                        <div className="text-xs text-[var(--color-muted)]">{new Date(e.created_at).toISOString().slice(0,10)}</div>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={generating || selectedIds.length === 0}
+                className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
+              >
+                {generating ? "Generating..." : `Generate Report (${selectedIds.length} selected)`}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {existingReports.length > 0 && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Past Expense Reports</h2>
+          <div className="rounded-md border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+            {existingReports.map((report) => (
+              <div key={report.id} className="flex items-center justify-between p-3 text-sm">
+                <div>
+                  <div className="font-medium">{report.name}</div>
+                  <div className="text-xs text-[var(--color-muted)]">
+                    Created: {new Date(report.created_at).toLocaleDateString()}
+                    <span className="mx-2">•</span>
+                    Status: <span className="capitalize">{report.status}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => viewReportFile(report.id)}
+                  className="rounded-md bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-strong)] hover:bg-[var(--color-border)] transition"
+                >
+                  View Report
+                </button>
+              </div>
+            ))}
           </div>
-          
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={generating || selectedIds.length === 0}
-              className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
-            >
-              {generating ? "Generating..." : `Generate Report (${selectedIds.length} selected)`}
-            </button>
-          </div>
-        </form>
+        </div>
       )}
     </div>
   );
