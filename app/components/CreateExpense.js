@@ -21,7 +21,9 @@ function isMissingColumnError(error) {
 export default function CreateExpense({ session, onSuccess }) {
   const [children, setChildren] = useState([]);
   const [form, setForm] = useState(emptyForm);
-  const [file, setFile] = useState(null);
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [invoiceFile, setInvoiceFile] = useState(null);
+  const [proofFile, setProofFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -70,28 +72,38 @@ export default function CreateExpense({ session, onSuccess }) {
         throw insertError;
       }
 
-      if (file && savedExpense?.id) {
-        const path = `${session.user.id}/${savedExpense.id}/${file.name}`;
-        try {
-          const { error: uploadError } = await supabase.storage.from("receipts").upload(path, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
+      const filesToUpload = [
+        { file: receiptFile, column: 'receipt_url' },
+        { file: invoiceFile, column: 'invoice_url' },
+        { file: proofFile, column: 'proof_of_payment_url' },
+      ];
 
-          if (!uploadError) {
-            await supabase.from("expense").update({ receipt_url: path }).eq("id", savedExpense.id);
-          } else {
-            console.error("Receipt upload failed", uploadError);
-            alert("Expense was saved, but the receipt could not be uploaded: " + uploadError.message);
+      for (const { file: f, column } of filesToUpload) {
+        if (f && savedExpense?.id) {
+          const path = `${session.user.id}/${savedExpense.id}/${column}_${f.name}`;
+          try {
+            const { error: uploadError } = await supabase.storage.from("receipts").upload(path, f, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+            if (!uploadError) {
+              await supabase.from("expense").update({ [column]: path }).eq("id", savedExpense.id);
+            } else {
+              console.error(`${column} upload failed`, uploadError);
+              alert(`Expense was saved, but the ${column} could not be uploaded: ` + uploadError.message);
+            }
+          } catch (uploadException) {
+            console.error(`${column} upload threw`, uploadException);
+            alert(`Expense was saved, but the ${column} upload failed unexpectedly.`);
           }
-        } catch (uploadException) {
-          console.error("Receipt upload threw", uploadException);
-          alert("Expense was saved, but the receipt upload failed unexpectedly.");
         }
       }
 
       setForm({ ...emptyForm, created_at: new Date().toISOString().slice(0, 10) });
-      setFile(null);
+      setReceiptFile(null);
+      setInvoiceFile(null);
+      setProofFile(null);
       if (onSuccess) onSuccess();
     } catch (err) {
       console.error("Failed to save expense", err);
@@ -148,7 +160,7 @@ export default function CreateExpense({ session, onSuccess }) {
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="mb-3 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
-        <div className="flex flex-wrap items-center gap-4 mb-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-3">
           <label className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
             <input
               type="checkbox"
@@ -157,12 +169,33 @@ export default function CreateExpense({ session, onSuccess }) {
             />
             Reimbursement requested
           </label>
-          <label className="text-sm text-[var(--color-muted)]">
-            Receipt: {" "}
+        </div>
+        
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-4">
+          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+            <span className="font-medium">Receipt:</span>
             <input
               type="file"
               accept="image/*,application/pdf"
-              onChange={(e) => setFile(e.target.files[0] || null)}
+              onChange={(e) => setReceiptFile(e.target.files[0] || null)}
+              className="text-xs"
+            />
+          </label>
+          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+            <span className="font-medium">Invoice:</span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setInvoiceFile(e.target.files[0] || null)}
+              className="text-xs"
+            />
+          </label>
+          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+            <span className="font-medium">Proof of Payment:</span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setProofFile(e.target.files[0] || null)}
               className="text-xs"
             />
           </label>
