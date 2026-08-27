@@ -5,10 +5,12 @@ import { supabase } from "../../lib/supabaseClient";
 
 export default function ExpenseList() {
   const [expenses, setExpenses] = useState([]);
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterKid, setFilterKid] = useState("");
-  const [filterDate, setFilterDate] = useState("");
-  const [filterReimbursed, setFilterReimbursed] = useState("");
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [filterKids, setFilterKids] = useState([]);
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterReimbursedReq, setFilterReimbursedReq] = useState("");
+  const [filterReimbursedGranted, setFilterReimbursedGranted] = useState("");
 
   useEffect(() => {
     loadExpenses();
@@ -48,17 +50,6 @@ export default function ExpenseList() {
     );
   }
 
-  async function toggleReimbursed(expense) {
-    const { error } = await supabase
-      .from("expense")
-      .update({
-        reimbursement_requested: !expense.reimbursement_requested,
-      })
-      .eq("id", expense.id);
-
-    if (!error) loadExpenses();
-  }
-
   async function deleteExpense(id) {
     if (!confirm("Delete this expense?")) return;
     const { error } = await supabase.from("expense").delete().eq("id", id);
@@ -77,11 +68,14 @@ export default function ExpenseList() {
     const kidName = e.child ? `${e.child.first_name} ${e.child.last_name}`.trim() : "";
     const dateFormatted = new Date(e.created_at).toISOString().slice(0, 10);
 
-    if (filterCategory && e.category !== filterCategory) return false;
-    if (filterKid && !kidName.toLowerCase().includes(filterKid.toLowerCase())) return false;
-    if (filterDate && dateFormatted !== filterDate) return false;
-    if (filterReimbursed === "yes" && !e.reimbursement_requested) return false;
-    if (filterReimbursed === "no" && e.reimbursement_requested) return false;
+    if (filterCategories.length > 0 && !filterCategories.includes(e.category)) return false;
+    if (filterKids.length > 0 && !filterKids.includes(kidName)) return false;
+    if (filterStartDate && dateFormatted < filterStartDate) return false;
+    if (filterEndDate && dateFormatted > filterEndDate) return false;
+    if (filterReimbursedReq === "yes" && !e.reimbursement_requested) return false;
+    if (filterReimbursedReq === "no" && e.reimbursement_requested) return false;
+    if (filterReimbursedGranted === "yes" && !e.reimbursement_granted) return false;
+    if (filterReimbursedGranted === "no" && e.reimbursement_granted) return false;
     return true;
   });
 
@@ -89,6 +83,23 @@ export default function ExpenseList() {
   const pendingReimbursement = expenses
     .filter((e) => e.reimbursement_requested && !e.reimbursement_granted)
     .reduce((s, e) => s + Number(e.amount), 0);
+
+  const uniqueChildNames = [...new Set(expenses.map(e => e.child ? `${e.child.first_name} ${e.child.last_name}`.trim() : "").filter(Boolean))];
+
+  const handleKidInputChange = (e) => {
+    const val = e.target.value;
+    if (val && !filterKids.includes(val)) {
+      setFilterKids([...filterKids, val]);
+    }
+  };
+
+  const removeKidFilter = (kidToRemove) => {
+    setFilterKids(filterKids.filter(k => k !== kidToRemove));
+  };
+
+  const removeCategoryFilter = (catToRemove) => {
+    setFilterCategories(filterCategories.filter(c => c !== catToRemove));
+  };
 
   return (
     <div>
@@ -99,37 +110,84 @@ export default function ExpenseList() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+          {filterCategories.map(cat => (
+            <span key={cat} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs capitalize">
+              {cat === "education" ? "Education" : "Aftercare"}
+              <button onClick={() => removeCategoryFilter(cat)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+            </span>
+          ))}
+          <select
+            value=""
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val && !filterCategories.includes(val)) {
+                setFilterCategories([...filterCategories, val]);
+              }
+            }}
+            className="bg-transparent px-1 text-sm outline-none"
+          >
+            <option value="" disabled hidden>{filterCategories.length === 0 ? "Filter category..." : "Add category..."}</option>
+            {!filterCategories.includes("education") && <option value="education">Education</option>}
+            {!filterCategories.includes("aftercare") && <option value="aftercare">Aftercare</option>}
+          </select>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+          {filterKids.map(kid => (
+            <span key={kid} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs">
+              {kid} 
+              <button onClick={() => removeKidFilter(kid)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+            </span>
+          ))}
+          <select
+            value=""
+            onChange={handleKidInputChange}
+            className="bg-transparent px-1 text-sm outline-none min-w-[120px]"
+          >
+            <option value="" disabled hidden>{filterKids.length === 0 ? "Filter child..." : "Add child..."}</option>
+            {uniqueChildNames.filter(n => !filterKids.includes(n)).map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            title="Start date"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+          <span className="text-[var(--color-muted)] text-sm">-</span>
+          <input
+            type="date"
+            title="End date"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+        </div>
         <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          value={filterReimbursedReq}
+          onChange={(e) => setFilterReimbursedReq(e.target.value)}
           className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
-          <option value="">All categories</option>
-          <option value="education">Education</option>
-          <option value="aftercare">Aftercare</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Filter by child"
-          value={filterKid}
-          onChange={(e) => setFilterKid(e.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-        />
-        <input
-          type="date"
-          placeholder="Filter by date"
-          value={filterDate}
-          onChange={(e) => setFilterDate(e.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-        />
-        <select
-          value={filterReimbursed}
-          onChange={(e) => setFilterReimbursed(e.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-        >
-          <option value="">Reimbursement: any</option>
+          <option value="">Reimbursement Req: Any</option>
           <option value="yes">Requested</option>
-          <option value="no">Not requested</option>
+          <option value="no">Not Requested</option>
+        </select>
+        <select
+          value={filterReimbursedGranted}
+          onChange={(e) => setFilterReimbursedGranted(e.target.value)}
+          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+        >
+          <option value="">Reimbursement Received: Any</option>
+          <option value="yes">Received</option>
+          <option value="no">Not Received</option>
         </select>
       </div>
 
@@ -154,27 +212,35 @@ export default function ExpenseList() {
                   {e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unspecified"}
                   {e.description ? ` — ${e.description}` : ""}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+                <div className="flex items-center gap-2 text-xs text-[var(--color-muted)] mt-1">
                   <span>{new Date(e.created_at).toISOString().slice(0, 10)}</span>
                   {e.receipt_url && (
                     <button onClick={() => viewReceipt(e.receipt_url)} className="underline">
                       Receipt
                     </button>
                   )}
+                  {e.invoice_url && (
+                    <button onClick={() => viewReceipt(e.invoice_url)} className="underline">
+                      Invoice
+                    </button>
+                  )}
+                  {e.proof_of_payment_url && (
+                    <button onClick={() => viewReceipt(e.proof_of_payment_url)} className="underline">
+                      Proof of Payment
+                    </button>
+                  )}
+                  <span className="ml-2 border-l border-gray-300 pl-2">
+                    Req: {e.reimbursement_requested ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                  </span>
+                  <span>
+                    Rcvd: {e.reimbursement_granted ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                  </span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1 text-xs text-[var(--color-muted)]">
-                <input
-                  type="checkbox"
-                  checked={e.reimbursement_requested}
-                  onChange={() => toggleReimbursed(e)}
-                />
-                Reimbursed
-              </label>
               <span className="font-medium">${Number(e.amount).toFixed(2)}</span>
-              <button onClick={() => deleteExpense(e.id)} className="text-[var(--color-muted)] hover:text-red-600">
+              <button onClick={() => deleteExpense(e.id)} className="text-[var(--color-muted)] hover:text-red-600 ml-2">
                 ✕
               </button>
             </div>
