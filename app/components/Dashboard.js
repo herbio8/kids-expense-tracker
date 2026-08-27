@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import CreateExpense from "./CreateExpense";
 import ExpenseList from "./ExpenseList";
 import CreateChild from "./CreateChild";
+import CreateExpenseReport from "./CreateExpenseReport";
 
 export default function Dashboard({ session }) {
   const [currentView, setCurrentView] = useState("home");
@@ -67,6 +68,16 @@ export default function Dashboard({ session }) {
         >
           Show Expenses
         </button>
+        <button
+          onClick={() => setCurrentView("createReport")}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            currentView === "createReport"
+              ? "bg-[var(--color-primary)] text-white"
+              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+          }`}
+        >
+          Create Expense Report
+        </button>
       </div>
 
       {currentView === "home" && (
@@ -93,6 +104,14 @@ export default function Dashboard({ session }) {
       {currentView === "list" && (
         <ExpenseList session={session} />
       )}
+
+      {currentView === "createReport" && (
+        <CreateExpenseReport
+          session={session}
+          onSuccess={() => setCurrentView("list")}
+        />
+      )}
+      
     </div>
   );
 }
