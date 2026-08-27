@@ -14,15 +14,26 @@ export default function CreateChild({ session, onSuccess }) {
 
     setSaving(true);
     
-    // 1. Insert into child table
-    const { data: childData, error: childError } = await supabase
+    // Generate a unique ID for the child client-side to avoid RLS selection issues
+    const childId = crypto.randomUUID();
+
+    // 0. Ensure the parent record exists to prevent Foreign Key violations
+    await supabase
+      .from("parent")
+      .upsert({
+        id: session.user.id,
+        first_name: session.user.user_metadata?.first_name || session.user.email?.split("@")[0] || "Parent",
+        last_name: session.user.user_metadata?.last_name || "Name"
+      });
+
+    // 1. Insert into child table without .select()
+    const { error: childError } = await supabase
       .from("child")
       .insert({
+        id: childId,
         first_name: firstName.trim(),
         last_name: lastName.trim()
-      })
-      .select("id")
-      .single();
+      });
 
     if (childError) {
       setSaving(false);
@@ -35,7 +46,7 @@ export default function CreateChild({ session, onSuccess }) {
       .from("parent_child")
       .insert({
         parent_id: session.user.id,
-        child_id: childData.id
+        child_id: childId
       });
 
     setSaving(false);
