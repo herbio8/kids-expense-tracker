@@ -1,147 +1,134 @@
--- Run this in Supabase Dashboard -> SQL Editor
+-- Clean up existing tables and types if they exist
+DROP TABLE IF EXISTS expense_to_expense_report CASCADE;
+DROP TABLE IF EXISTS expense_report CASCADE;
+DROP TABLE IF EXISTS expense CASCADE;
+DROP TABLE IF EXISTS parent_child CASCADE;
+DROP TABLE IF EXISTS child CASCADE;
+DROP TABLE IF EXISTS parent CASCADE;
+DROP TYPE IF EXISTS expense_category CASCADE;
 
-create extension if not exists pgcrypto;
+-- 1. Create Enum type for Expense Category
+CREATE TYPE expense_category AS ENUM ('education', 'aftercare');
 
--- ─── Profiles table ───────────────────────────────────────────
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  full_name text,
-  role text not null default 'parent' check (role in ('parent', 'admin')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+-- 2. Create Parent table
+CREATE TABLE parent (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL
 );
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-as $$
-begin
-  insert into public.profiles (id, full_name)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data->>'full_name', new.email)
-  );
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
-
-alter table public.profiles enable row level security;
-
-drop policy if exists "Authenticated users can read all profiles" on public.profiles;
-drop policy if exists "Users can update their own profile" on public.profiles;
-
-create policy "Authenticated users can read all profiles"
-  on public.profiles for select
-  using (auth.role() = 'authenticated');
-
-create policy "Users can update their own profile"
-  on public.profiles for update
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
-
--- ─── Kids table ───────────────────────────────────────────────
-create table if not exists public.kids (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  created_by uuid references public.profiles(id) on delete set null,
-  created_at timestamptz not null default now()
+-- 3. Create Child table
+CREATE TABLE child (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL
 );
 
-alter table public.kids enable row level security;
-
-drop policy if exists "Authenticated users can read all kids" on public.kids;
-drop policy if exists "Authenticated users can insert kids" on public.kids;
-drop policy if exists "Authenticated users can update kids" on public.kids;
-
-create policy "Authenticated users can read all kids"
-  on public.kids for select
-  using (auth.role() = 'authenticated');
-
-create policy "Authenticated users can insert kids"
-  on public.kids for insert
-  with check (auth.role() = 'authenticated');
-
-create policy "Authenticated users can update kids"
-  on public.kids for update
-  using (auth.role() = 'authenticated');
-
--- ─── Expenses table ───────────────────────────────────────────
-create table if not exists public.expenses (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now(),
-  date date not null,
-  amount numeric(10,2) not null check (amount > 0),
-  category text not null check (category in ('Education', 'Aftercare')),
-  kid_id uuid references public.kids(id) on delete set null,
-  notes text,
-  added_by uuid not null references auth.users(id) on delete cascade,
-  reimbursement_requested boolean not null default false,
-  reimbursement_date date,
-  receipt_url text
+-- 4. Create Junction table for Parent <-> Child (Many-to-Many)
+CREATE TABLE parent_child (
+  parent_id UUID REFERENCES parent(id) ON DELETE CASCADE,
+  child_id UUID REFERENCES child(id) ON DELETE CASCADE,
+  PRIMARY KEY (parent_id, child_id)
 );
 
-alter table public.expenses add column if not exists kid_id uuid references public.kids(id) on delete set null;
-alter table public.expenses add column if not exists notes text;
-alter table public.expenses add column if not exists added_by uuid references auth.users(id) on delete cascade;
-alter table public.expenses add column if not exists reimbursement_requested boolean not null default false;
-alter table public.expenses add column if not exists reimbursement_date date;
-alter table public.expenses add column if not exists receipt_url text;
+-- 5. Create Expense table (with Enum category)
+CREATE TABLE expense (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  child_id UUID NOT NULL REFERENCES child(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  description TEXT,
+  category expense_category NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL,
+  invoice_url TEXT,
+  receipt_url TEXT,
+  proof_of_payment_url TEXT,
+  reimbursement_requested BOOLEAN NOT NULL DEFAULT false,
+  reimbursement_granted BOOLEAN NOT NULL DEFAULT false
+);
 
-create index if not exists expenses_date_idx on public.expenses (date desc);
-create index if not exists expenses_category_idx on public.expenses (category);
+-- 6. Create Expense Report table
+CREATE TABLE expense_report (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id UUID NOT NULL REFERENCES parent(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  name TEXT NOT NULL, -- e.g., "August 2026 Reimbursements"
+  status TEXT NOT NULL DEFAULT 'draft' -- e.g., draft, submitted, paid
+);
 
--- ─── Row Level Security ─────────────────────────────────────────
--- This is a shared household app: any logged-in user (you + your wife)
--- can read/write all rows. Nobody unauthenticated can touch anything.
-alter table public.expenses enable row level security;
+-- 7. Create Junction table for Report <-> Expense (Many-to-Many / One-to-Many mapping)
+CREATE TABLE expense_to_expense_report (
+  report_id UUID REFERENCES expense_report(id) ON DELETE CASCADE,
+  expense_id UUID REFERENCES expense(id) ON DELETE CASCADE,
+  PRIMARY KEY (report_id, expense_id)
+);
 
-drop policy if exists "Authenticated users can read all expenses" on public.expenses;
-drop policy if exists "Authenticated users can insert expenses" on public.expenses;
-drop policy if exists "Authenticated users can update expenses" on public.expenses;
-drop policy if exists "Authenticated users can delete expenses" on public.expenses;
+-- ==========================================
+-- ENABLE RLS
+-- ==========================================
+ALTER TABLE parent ENABLE ROW LEVEL SECURITY;
+ALTER TABLE child ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parent_child ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_report ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense_to_expense_report ENABLE ROW LEVEL SECURITY;
 
-create policy "Authenticated users can read all expenses"
-  on public.expenses for select
-  using (auth.role() = 'authenticated');
+-- ==========================================
+-- RLS POLICIES
+-- ==========================================
 
-create policy "Authenticated users can insert expenses"
-  on public.expenses for insert
-  with check (auth.role() = 'authenticated');
+-- 1. PARENT POLICIES
+CREATE POLICY "Users can manage their own parent profile" 
+ON parent FOR ALL TO authenticated 
+USING (auth.uid() = id) 
+WITH CHECK (auth.uid() = id);
 
-create policy "Authenticated users can update expenses"
-  on public.expenses for update
-  using (auth.role() = 'authenticated');
+-- 2. PARENT_CHILD POLICIES
+CREATE POLICY "Users can manage their own parent_child links" 
+ON parent_child FOR ALL TO authenticated 
+USING (parent_id = auth.uid()) 
+WITH CHECK (parent_id = auth.uid());
 
-create policy "Authenticated users can delete expenses"
-  on public.expenses for delete
-  using (auth.role() = 'authenticated');
+-- 3. CHILD POLICIES
+CREATE POLICY "Users can manage their own children" 
+ON child FOR ALL TO authenticated 
+USING (
+  id IN (
+    SELECT child_id FROM parent_child WHERE parent_id = auth.uid()
+  )
+)
+WITH CHECK (true);
 
--- ─── Storage bucket for receipts ────────────────────────────────
--- Run this after creating the "receipts" bucket in Dashboard -> Storage
--- (Storage UI creates the bucket; these policies control access to it)
+-- 4. EXPENSE POLICIES
+CREATE POLICY "Users can manage expenses for their children" 
+ON expense FOR ALL TO authenticated 
+USING (
+  child_id IN (
+    SELECT child_id FROM parent_child WHERE parent_id = auth.uid()
+  )
+)
+WITH CHECK (
+  child_id IN (
+    SELECT child_id FROM parent_child WHERE parent_id = auth.uid()
+  )
+);
 
-insert into storage.buckets (id, name, public)
-values ('receipts', 'receipts', false)
-on conflict (id) do nothing;
+-- 5. EXPENSE REPORT POLICIES
+CREATE POLICY "Users can manage their own expense reports"
+ON expense_report FOR ALL TO authenticated
+USING (parent_id = auth.uid())
+WITH CHECK (parent_id = auth.uid());
 
-drop policy if exists "Authenticated users can upload receipts" on storage.objects;
-drop policy if exists "Authenticated users can view receipts" on storage.objects;
-drop policy if exists "Authenticated users can delete receipts" on storage.objects;
-
-create policy "Authenticated users can upload receipts"
-  on storage.objects for insert
-  with check (bucket_id = 'receipts' and auth.role() = 'authenticated');
-
-create policy "Authenticated users can view receipts"
-  on storage.objects for select
-  using (bucket_id = 'receipts' and auth.role() = 'authenticated');
-
-create policy "Authenticated users can delete receipts"
-  on storage.objects for delete
-  using (bucket_id = 'receipts' and auth.role() = 'authenticated');
+-- 6. EXPENSE_TO_EXPENSE_REPORT POLICIES (Mapping table)
+-- User can only link expenses to a report if they own the report.
+CREATE POLICY "Users can manage links for their own reports"
+ON expense_to_expense_report FOR ALL TO authenticated
+USING (
+  report_id IN (
+    SELECT id FROM expense_report WHERE parent_id = auth.uid()
+  )
+)
+WITH CHECK (
+  report_id IN (
+    SELECT id FROM expense_report WHERE parent_id = auth.uid()
+  )
+);
