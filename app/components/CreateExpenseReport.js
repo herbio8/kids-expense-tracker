@@ -39,13 +39,65 @@ export default function CreateExpenseReport({ session, onSuccess }) {
     const path = `${session.user.id}/reports/${reportId}.html`;
     const { data, error } = await supabase.storage
       .from("receipts")
-      .createSignedUrl(path, 60);
+      .createSignedUrl(path, 60, {
+        download: false
+      });
 
     if (error) {
       alert("Could not find the HTML report file.");
     } else {
       window.open(data.signedUrl, "_blank");
     }
+  }
+
+  async function deleteReport(reportId) {
+    if (!confirm("Are you sure you want to delete this report? This action cannot be undone.")) return;
+
+    // 1. Before deleting, find all expenses linked to THIS report
+    const { data: linkedExpenses } = await supabase
+      .from("expense_to_expense_report")
+      .select("expense_id")
+      .eq("report_id", reportId);
+
+    const expenseIds = linkedExpenses?.map(link => link.expense_id) || [];
+
+    // 2. Supabase will automatically cascade and delete the mapped rows in `expense_to_expense_report`
+    const { error: dbError } = await supabase
+      .from("expense_report")
+      .delete()
+      .eq("id", reportId);
+
+    if (dbError) {
+      alert("Failed to delete report: " + dbError.message);
+      return;
+    }
+
+    // 3. For all expenses that were in this report, check if they exist in ANY OTHER report
+    if (expenseIds.length > 0) {
+      const { data: stillLinked } = await supabase
+        .from("expense_to_expense_report")
+        .select("expense_id")
+        .in("expense_id", expenseIds);
+
+      const stillLinkedIds = new Set(stillLinked?.map(link => link.expense_id) || []);
+      const completelyOrphanedIds = expenseIds.filter(id => !stillLinkedIds.has(id));
+
+      // 4. Update the orphaned expenses to reimbursement_requested = false
+      if (completelyOrphanedIds.length > 0) {
+        await supabase
+          .from("expense")
+          .update({ reimbursement_requested: false })
+          .in("id", completelyOrphanedIds);
+      }
+    }
+
+    // 5. Delete the HTML file from storage
+    const path = `${session.user.id}/reports/${reportId}.html`;
+    await supabase.storage.from("receipts").remove([path]);
+
+    // Refresh the UI
+    loadExistingReports();
+    loadExpenses(); // Refresh expenses in case they reappeared in the "outstanding" list
   }
 
   async function loadExpenses() {
@@ -165,7 +217,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
 
       // 4. Generate the HTML report blob and upload it to Supabase Storage
       const selectedExpensesList = expenses.filter(exp => selectedIds.includes(exp.id));
-      const htmlContent = generateHTMLReport(selectedExpensesList, finalReportName);
+      const htmlContent = await generateHTMLReport(supabase, selectedExpensesList, finalReportName);
       
       const blob = new Blob([htmlContent], { type: "text/html" });
       const path = `${session.user.id}/reports/${reportData.id}.html`;
@@ -173,7 +225,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(path, blob, {
-          contentType: "text/html",
+          contentType: "text/html; charset=utf-8",
           upsert: false
         });
 
@@ -353,12 +405,20 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                     Status: <span className="capitalize">{report.status}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => viewReportFile(report.id)}
-                  className="rounded-md bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-strong)] hover:bg-[var(--color-border)] transition"
-                >
-                  View Report
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => viewReportFile(report.id)}
+                    className="rounded-md bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-strong)] hover:bg-[var(--color-border)] transition"
+                  >
+                    View Report
+                  </button>
+                  <button
+                    onClick={() => deleteReport(report.id)}
+                    className="text-xs font-semibold text-[var(--color-muted)] hover:text-red-600 transition ml-2"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

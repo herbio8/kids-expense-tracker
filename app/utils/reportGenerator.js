@@ -1,10 +1,23 @@
-export function generateHTMLReport(selectedExpensesList, finalReportName) {
+export async function generateHTMLReport(supabase, selectedExpensesList, finalReportName) {
   const grouped = selectedExpensesList.reduce((acc, exp) => {
     const kidName = exp.child ? `${exp.child.first_name} ${exp.child.last_name}`.trim() : "Unspecified";
     if (!acc[kidName]) acc[kidName] = [];
     acc[kidName].push(exp);
     return acc;
   }, {});
+
+  async function getBase64DataUrl(path) {
+    if (!path) return null;
+    const { data, error } = await supabase.storage.from("receipts").download(path);
+    if (error || !data) return null;
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(data);
+    });
+  }
 
   let html = `<!DOCTYPE html><html><head><title>${finalReportName}</title>
   <style>
@@ -125,6 +138,19 @@ export function generateHTMLReport(selectedExpensesList, finalReportName) {
       border-top: 2px solid var(--border);
       border-bottom: none;
     }
+    .appendix {
+      margin-top: 60px;
+      padding-top: 40px;
+      border-top: 2px dashed var(--border);
+    }
+    .doc-container {
+      margin-bottom: 50px;
+    }
+    .doc-container h3 {
+      font-size: 1.125rem;
+      color: var(--text-main);
+      margin-bottom: 15px;
+    }
   </style></head><body>
   <div class="container">
     <div class="header">
@@ -133,6 +159,7 @@ export function generateHTMLReport(selectedExpensesList, finalReportName) {
     </div>`;
 
   let grandTotal = 0;
+  const allDocs = [];
 
   for (const [kidName, exps] of Object.entries(grouped)) {
     html += `<div class="section">`;
@@ -151,10 +178,34 @@ export function generateHTMLReport(selectedExpensesList, finalReportName) {
       const date = new Date(exp.created_at).toISOString().slice(0, 10);
       
       let docs = [];
-      if (exp.receipt_url) docs.push("Receipt");
-      if (exp.invoice_url) docs.push("Invoice");
-      if (exp.proof_of_payment_url) docs.push("Proof");
-      const docsStr = docs.length > 0 ? `<span class="attachment">${docs.join(", ")}</span>` : `<span style="color: #9ca3af; font-size: 0.875rem;">None</span>`;
+      const descStr = exp.description ? ` - ${exp.description}` : "";
+        
+      if (exp.receipt_url) {
+        const dataUrl = await getBase64DataUrl(exp.receipt_url);
+        if (dataUrl) {
+          const docNum = allDocs.length + 1;
+          docs.push(`Receipt [${docNum}]`);
+          allDocs.push({ label: `Receipt for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
+        }
+      }
+      if (exp.invoice_url) {
+        const dataUrl = await getBase64DataUrl(exp.invoice_url);
+        if (dataUrl) {
+          const docNum = allDocs.length + 1;
+          docs.push(`Invoice [${docNum}]`);
+          allDocs.push({ label: `Invoice for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
+        }
+      }
+      if (exp.proof_of_payment_url) {
+        const dataUrl = await getBase64DataUrl(exp.proof_of_payment_url);
+        if (dataUrl) {
+          const docNum = allDocs.length + 1;
+          docs.push(`Proof of Payment [${docNum}]`);
+          allDocs.push({ label: `Proof of Payment for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
+        }
+      }
+        
+        const docsStr = docs.length > 0 ? `<span class="attachment">${docs.join(", ")}</span>` : `<span style="color: #9ca3af; font-size: 0.875rem;">None</span>`;
 
       html += `<tr>
         <td>${date}</td>
@@ -173,6 +224,23 @@ export function generateHTMLReport(selectedExpensesList, finalReportName) {
     <div style="font-size: 1.25rem; font-weight: 600; color: #4b5563;">Grand Total:</div>
     <div class="grand-total">$${grandTotal.toFixed(2)}</div>
   </div>`;
+  
+  if (allDocs.length > 0) {
+    html += `<div class="appendix">
+      <h2>Appendix: Attached Documents</h2>`;
+    allDocs.forEach((doc, index) => {
+      html += `<div class="doc-container">
+        <h3>${index + 1}. ${doc.label}</h3>`;
+
+      if (doc.type === 'pdf') {
+        html += `<embed src="${doc.dataUrl}" width="100%" height="800px" type="application/pdf" />`;
+      } else {
+        html += `<img src="${doc.dataUrl}" alt="${doc.label}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
   
   html += `</div></body></html>`;
   return html;
