@@ -10,6 +10,7 @@ const emptyForm = {
   child_id: "",
   description: "",
   reimbursement_requested: false,
+  reimbursement_granted: false,
 };
 
 function isMissingColumnError(error) {
@@ -57,6 +58,7 @@ export default function CreateExpense({ session, onSuccess }) {
         category: form.category,
         description: form.description || null,
         reimbursement_requested: form.reimbursement_requested,
+        reimbursement_granted: form.reimbursement_granted,
         child_id: form.child_id
       };
 
@@ -167,7 +169,15 @@ export default function CreateExpense({ session, onSuccess }) {
               checked={form.reimbursement_requested}
               onChange={(e) => setForm({ ...form, reimbursement_requested: e.target.checked })}
             />
-            Reimbursement requested
+            Reimbursement Requested
+          </label>
+          <label className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+            <input
+              type="checkbox"
+              checked={form.reimbursement_granted}
+              onChange={(e) => setForm({ ...form, reimbursement_granted: e.target.checked })}
+            />
+            Reimbursement Granted
           </label>
         </div>
         
