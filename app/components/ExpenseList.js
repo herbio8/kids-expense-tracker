@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import EditExpense from "./EditExpense";
 
-export default function ExpenseList() {
+export default function ExpenseList({ session }) {
   const [expenses, setExpenses] = useState([]);
   const [filterCategories, setFilterCategories] = useState([]);
   const [filterKids, setFilterKids] = useState([]);
@@ -11,6 +12,7 @@ export default function ExpenseList() {
   const [filterEndDate, setFilterEndDate] = useState("");
   const [filterReimbursedReq, setFilterReimbursedReq] = useState("");
   const [filterReimbursedGranted, setFilterReimbursedGranted] = useState("");
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
 
   useEffect(() => {
     loadExpenses();
@@ -195,57 +197,79 @@ export default function ExpenseList() {
         {filtered.length === 0 && (
           <p className="p-6 text-center text-sm text-[var(--color-muted)]">No expenses match these filters.</p>
         )}
-        {filtered.map((e) => (
-          <div key={e.id} className="flex items-center justify-between p-3 text-sm">
-            <div className="flex items-center gap-3">
-              <span
-                className={`rounded-md px-2 py-0.5 text-xs ${
-                  e.category === "education"
-                    ? "bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)]"
-                    : "bg-[#f1e8db] text-[#7a5f3c]"
-                }`}
-              >
-                {e.category === "education" ? "Education" : "Aftercare"}
-              </span>
-              <div>
-                <div>
-                  {e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unspecified"}
-                  {e.description ? ` — ${e.description}` : ""}
+        {filtered.map((e) => {
+          const isEditingThis = editingExpenseId === e.id;
+          const isEditingOther = editingExpenseId !== null && !isEditingThis;
+          
+          return (
+          <div key={e.id} className={isEditingOther ? "opacity-40 pointer-events-none grayscale transition" : "transition"}>
+            {isEditingThis ? (
+              <EditExpense
+                expense={e}
+                session={session}
+                onSave={() => {
+                  setEditingExpenseId(null);
+                  loadExpenses();
+                }}
+                onCancel={() => setEditingExpenseId(null)}
+              />
+            ) : (
+              <div className="flex items-center justify-between p-3 text-sm hover:bg-[var(--color-accent-soft)] transition">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-xs ${
+                      e.category === "education"
+                        ? "bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)]"
+                        : "bg-[#f1e8db] text-[#7a5f3c]"
+                    }`}
+                  >
+                    {e.category === "education" ? "Education" : "Aftercare"}
+                  </span>
+                  <div>
+                    <div>
+                      {e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unspecified"}
+                      {e.description ? ` — ${e.description}` : ""}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-[var(--color-muted)] mt-1">
+                      <span>{new Date(e.created_at).toISOString().slice(0, 10)}</span>
+                      {e.receipt_url && (
+                        <button onClick={() => viewReceipt(e.receipt_url)} className="underline">
+                          Receipt
+                        </button>
+                      )}
+                      {e.invoice_url && (
+                        <button onClick={() => viewReceipt(e.invoice_url)} className="underline">
+                          Invoice
+                        </button>
+                      )}
+                      {e.proof_of_payment_url && (
+                        <button onClick={() => viewReceipt(e.proof_of_payment_url)} className="underline">
+                          Proof of Payment
+                        </button>
+                      )}
+                      <span className="ml-2 border-l border-gray-300 pl-2">
+                        Req: {e.reimbursement_requested ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                      </span>
+                      <span>
+                        Rcvd: {e.reimbursement_granted ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[var(--color-muted)] mt-1">
-                  <span>{new Date(e.created_at).toISOString().slice(0, 10)}</span>
-                  {e.receipt_url && (
-                    <button onClick={() => viewReceipt(e.receipt_url)} className="underline">
-                      Receipt
-                    </button>
-                  )}
-                  {e.invoice_url && (
-                    <button onClick={() => viewReceipt(e.invoice_url)} className="underline">
-                      Invoice
-                    </button>
-                  )}
-                  {e.proof_of_payment_url && (
-                    <button onClick={() => viewReceipt(e.proof_of_payment_url)} className="underline">
-                      Proof of Payment
-                    </button>
-                  )}
-                  <span className="ml-2 border-l border-gray-300 pl-2">
-                    Req: {e.reimbursement_requested ? <span className="text-green-600 font-medium">Yes</span> : "No"}
-                  </span>
-                  <span>
-                    Rcvd: {e.reimbursement_granted ? <span className="text-green-600 font-medium">Yes</span> : "No"}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium">${Number(e.amount).toFixed(2)}</span>
+                  <button onClick={() => setEditingExpenseId(e.id)} className="text-[var(--color-primary)] hover:text-[var(--color-primary-strong)] ml-4 text-xs font-semibold">
+                    Edit
+                  </button>
+                  <button onClick={() => deleteExpense(e.id)} className="text-[var(--color-muted)] hover:text-red-600 ml-2 font-bold">
+                    ✕
+                  </button>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-medium">${Number(e.amount).toFixed(2)}</span>
-              <button onClick={() => deleteExpense(e.id)} className="text-[var(--color-muted)] hover:text-red-600 ml-2">
-                ✕
-              </button>
-            </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
