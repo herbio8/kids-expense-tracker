@@ -6,6 +6,7 @@ import CreateExpense from "./CreateExpense";
 import ExpenseList from "./ExpenseList";
 import CreateChild from "./CreateChild";
 import CreateExpenseReport from "./CreateExpenseReport";
+import Home from "./Home";
 
 export default function Dashboard({ session }) {
   const [currentView, setCurrentView] = useState("home");
@@ -81,10 +82,7 @@ export default function Dashboard({ session }) {
       </div>
 
       {currentView === "home" && (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-[var(--color-primary-strong)] mb-2">Dashboard Home</h2>
-          <p className="text-[var(--color-muted)]">Select an option from the menu above to get started.</p>
-        </div>
+        <Home session={session} />
       )}
       
       {currentView === "createChild" && (
