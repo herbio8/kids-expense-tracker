@@ -3,22 +3,56 @@
 @tailwind utilities;
 
 :root {
+  /* Layout colors */
   --color-bg: #f7f3eb;
   --color-surface: #fffdf9;
   --color-surface-strong: #f4e8da;
+  
+  /* Brand colors */
   --color-primary: #8a6a4b;
   --color-primary-strong: #6f5339;
   --color-accent: #d8a77a;
   --color-accent-soft: #f6dfc9;
+  
+  /* Text & Border */
   --color-text: #4a3b2f;
   --color-muted: #8f7d6f;
   --color-border: #e8dccf;
+
+  /* Status Colors: Error/Missing */
+  --color-error: #ef4444; 
+  --color-error-strong: #dc2626; 
+  --color-error-bg: #fef2f2; 
+  --color-error-bg-strong: #fee2e2; 
+  --color-error-border: #fecaca; 
+
+  /* Status Colors: Success/Ready */
+  --color-success: #22c55e; 
+  --color-success-strong: #16a34a; 
+  --color-success-bg: #f0fdf4; 
+  --color-success-bg-strong: #dcfce7; 
+  --color-success-border: #bbf7d0; 
+
+  /* Status Colors: Info/Pending */
+  --color-info: #3b82f6; 
+  --color-info-strong: #2563eb; 
+  --color-info-text: #1d4ed8; 
+  --color-info-bg: #eff6ff; 
+  --color-info-bg-strong: #dbeafe; 
+  --color-info-border: #bfdbfe; 
+
+  /* Category colors */
+  --color-cat-aftercare-bg: #f1e8db;
+  --color-cat-aftercare-text: #7a5f3c;
+
+  /* Fonts */
+  --font-main: Arial, Helvetica, sans-serif;
 }
 
 body {
   background: linear-gradient(135deg, var(--color-bg) 0%, #fdf8f1 100%);
   color: var(--color-text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-main);
 }
 
 ::selection {

@@ -19,7 +19,7 @@ export default function Home() {
   }, []);
 
   if (session === undefined) {
-    return <div className="p-8 text-sm text-gray-500">Loading...</div>;
+    return <div className="p-8 text-sm text-muted">Loading...</div>;
   }
 
   return session ? <Dashboard session={session} /> : <Login />;

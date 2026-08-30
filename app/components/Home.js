@@ -80,7 +80,7 @@ export default function Home({ session }) {
 
   if (error) {
     return (
-      <div className="text-red-500 bg-red-100 p-4 rounded-md">
+      <div className="text-error bg-error-bg-strong p-4 rounded-md">
         Error loading data: {error}
       </div>
     );
@@ -90,8 +90,8 @@ export default function Home({ session }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Missing Documents Section */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-red-600 mb-4 flex items-center">
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-error-strong mb-4 flex items-center">
             <svg
               className="w-5 h-5 mr-2"
               fill="none"
@@ -112,16 +112,16 @@ export default function Home({ session }) {
               {missingDocs.map((exp) => (
                 <div
                   key={exp.id}
-                  className="p-3 border border-red-200 bg-red-50 rounded-lg text-sm"
+                  className="p-3 border border-error-border bg-error-bg rounded-lg text-sm"
                 >
-                  <div className="font-medium text-gray-800">
+                  <div className="font-medium text-text">
                     {exp.description || "Untitled Expense"}
                   </div>
-                  <div className="text-gray-600 text-xs mt-1">
+                  <div className="text-muted text-xs mt-1">
                     Child: {exp.child?.first_name} {exp.child?.last_name} | Amount: $
                     {exp.amount}
                   </div>
-                  <div className="text-red-500 text-xs mt-2 font-medium">
+                  <div className="text-error text-xs mt-2 font-medium">
                     Missing:{" "}
                     {[
                       !exp.invoice_url && "Invoice",
@@ -135,15 +135,15 @@ export default function Home({ session }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">
+            <p className="text-sm text-muted italic">
               All expenses have their required documents!
             </p>
           )}
         </div>
 
         {/* Ready for Report Section */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-green-600 mb-4 flex items-center">
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-success-strong mb-4 flex items-center">
             <svg
               className="w-5 h-5 mr-2"
               fill="none"
@@ -164,12 +164,12 @@ export default function Home({ session }) {
               {readyForReport.map((exp) => (
                 <div
                   key={exp.id}
-                  className="p-3 border border-green-200 bg-green-50 rounded-lg text-sm"
+                  className="p-3 border border-success-border bg-success-bg rounded-lg text-sm"
                 >
-                  <div className="font-medium text-gray-800">
+                  <div className="font-medium text-text">
                     {exp.description || "Untitled Expense"}
                   </div>
-                  <div className="text-gray-600 text-xs mt-1">
+                  <div className="text-muted text-xs mt-1">
                     Child: {exp.child?.first_name} {exp.child?.last_name} | Amount: $
                     {exp.amount}
                   </div>
@@ -177,7 +177,7 @@ export default function Home({ session }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 italic">
+            <p className="text-sm text-muted italic">
               No expenses are currently waiting to be added to a report.
             </p>
           )}
@@ -185,8 +185,8 @@ export default function Home({ session }) {
       </div>
 
       {/* Pending Reports Section */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-blue-600 mb-4 flex items-center">
+      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-info-strong mb-4 flex items-center">
           <svg
             className="w-5 h-5 mr-2"
             fill="none"
@@ -207,14 +207,14 @@ export default function Home({ session }) {
             {pendingReports.map((report) => (
               <div
                 key={report.id}
-                className="p-4 border border-blue-200 bg-blue-50 rounded-lg"
+                className="p-4 border border-info-border bg-info-bg rounded-lg"
               >
-                <div className="font-semibold text-gray-800">{report.name}</div>
+                <div className="font-semibold text-text">{report.name}</div>
                 <div className="mt-2 flex justify-between items-center text-xs">
-                  <span className="text-gray-500">
+                  <span className="text-muted">
                     {new Date(report.created_at).toLocaleDateString()}
                   </span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium capitalize">
+                  <span className="px-2 py-1 bg-info-bg-strong text-info-text rounded-full font-medium capitalize">
                     {report.status}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ export default function Home({ session }) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 italic">
+          <p className="text-sm text-muted italic">
             You don't have any pending reports.
           </p>
         )}

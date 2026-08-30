@@ -112,11 +112,11 @@ export default function ExpenseList({ session }) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+        <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface px-1 py-1 focus-within:ring-2 focus-within:ring-accent">
           {filterCategories.map(cat => (
-            <span key={cat} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs capitalize">
+            <span key={cat} className="flex items-center gap-1 bg-accent-soft text-primary-strong px-2 py-0.5 rounded text-xs capitalize">
               {cat === "education" ? "Education" : "Aftercare"}
-              <button onClick={() => removeCategoryFilter(cat)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+              <button onClick={() => removeCategoryFilter(cat)} className="hover:text-error font-bold" title="Remove filter">×</button>
             </span>
           ))}
           <select
@@ -135,11 +135,11 @@ export default function ExpenseList({ session }) {
           </select>
         </div>
         
-        <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+        <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface px-1 py-1 focus-within:ring-2 focus-within:ring-accent">
           {filterKids.map(kid => (
-            <span key={kid} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs">
+            <span key={kid} className="flex items-center gap-1 bg-accent-soft text-primary-strong px-2 py-0.5 rounded text-xs">
               {kid} 
-              <button onClick={() => removeKidFilter(kid)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+              <button onClick={() => removeKidFilter(kid)} className="hover:text-error font-bold" title="Remove filter">×</button>
             </span>
           ))}
           <select
@@ -162,21 +162,21 @@ export default function ExpenseList({ session }) {
             title="Start date"
             value={filterStartDate}
             onChange={(e) => setFilterStartDate(e.target.value)}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
-          <span className="text-[var(--color-muted)] text-sm">-</span>
+          <span className="text-muted text-sm">-</span>
           <input
             type="date"
             title="End date"
             value={filterEndDate}
             onChange={(e) => setFilterEndDate(e.target.value)}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
         <select
           value={filterReimbursedReq}
           onChange={(e) => setFilterReimbursedReq(e.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="">Reimbursement Req: Any</option>
           <option value="yes">Requested</option>
@@ -185,7 +185,7 @@ export default function ExpenseList({ session }) {
         <select
           value={filterReimbursedGranted}
           onChange={(e) => setFilterReimbursedGranted(e.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
           <option value="">Reimbursement Received: Any</option>
           <option value="yes">Received</option>
@@ -193,9 +193,9 @@ export default function ExpenseList({ session }) {
         </select>
       </div>
 
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] divide-y divide-[var(--color-border)]">
+      <div className="rounded-2xl border border-border bg-surface divide-y divide-border">
         {filtered.length === 0 && (
-          <p className="p-6 text-center text-sm text-[var(--color-muted)]">No expenses match these filters.</p>
+          <p className="p-6 text-center text-sm text-muted">No expenses match these filters.</p>
         )}
         {filtered.map((e) => {
           const isEditingThis = editingExpenseId === e.id;
@@ -214,13 +214,13 @@ export default function ExpenseList({ session }) {
                 onCancel={() => setEditingExpenseId(null)}
               />
             ) : (
-              <div className="flex items-center justify-between p-3 text-sm hover:bg-[var(--color-accent-soft)] transition">
+              <div className="flex items-center justify-between p-3 text-sm hover:bg-accent-soft transition">
                 <div className="flex items-center gap-3">
                   <span
                     className={`rounded-md px-2 py-0.5 text-xs ${
                       e.category === "education"
-                        ? "bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)]"
-                        : "bg-[#f1e8db] text-[#7a5f3c]"
+                        ? "bg-accent-soft text-primary-strong"
+                        : "bg-cat-aftercare-bg text-cat-aftercare-text"
                     }`}
                   >
                     {e.category === "education" ? "Education" : "Aftercare"}
@@ -230,7 +230,7 @@ export default function ExpenseList({ session }) {
                       {e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unspecified"}
                       {e.description ? ` — ${e.description}` : ""}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-[var(--color-muted)] mt-1">
+                    <div className="flex items-center gap-2 text-xs text-muted mt-1">
                       <span>{new Date(e.created_at).toISOString().slice(0, 10)}</span>
                       {e.receipt_url && (
                         <button onClick={() => viewReceipt(e.receipt_url)} className="underline">
@@ -247,21 +247,21 @@ export default function ExpenseList({ session }) {
                           Proof of Payment
                         </button>
                       )}
-                      <span className="ml-2 border-l border-gray-300 pl-2">
-                        Req: {e.reimbursement_requested ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                      <span className="ml-2 border-l border-border pl-2">
+                        Req: {e.reimbursement_requested ? <span className="text-success-strong font-medium">Yes</span> : "No"}
                       </span>
                       <span>
-                        Rcvd: {e.reimbursement_granted ? <span className="text-green-600 font-medium">Yes</span> : "No"}
+                        Rcvd: {e.reimbursement_granted ? <span className="text-success-strong font-medium">Yes</span> : "No"}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-medium">${Number(e.amount).toFixed(2)}</span>
-                  <button onClick={() => setEditingExpenseId(e.id)} className="text-[var(--color-primary)] hover:text-[var(--color-primary-strong)] ml-4 text-xs font-semibold">
+                  <button onClick={() => setEditingExpenseId(e.id)} className="text-primary hover:text-primary-strong ml-4 text-xs font-semibold">
                     Edit
                   </button>
-                  <button onClick={() => deleteExpense(e.id)} className="text-[var(--color-muted)] hover:text-red-600 ml-2 font-bold">
+                  <button onClick={() => deleteExpense(e.id)} className="text-muted hover:text-error-strong ml-2 font-bold">
                     ✕
                   </button>
                 </div>
@@ -277,9 +277,9 @@ export default function ExpenseList({ session }) {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-sm">
-      <div className="text-xs text-[var(--color-muted)]">{label}</div>
-      <div className="text-lg font-semibold text-[var(--color-primary-strong)]">${Number(value).toFixed(2)}</div>
+    <div className="rounded-2xl border border-border bg-surface p-3 shadow-sm">
+      <div className="text-xs text-muted">{label}</div>
+      <div className="text-lg font-semibold text-primary-strong">${Number(value).toFixed(2)}</div>
     </div>
   );
 }

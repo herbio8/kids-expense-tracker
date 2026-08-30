@@ -62,33 +62,33 @@ export default function CreateChild({ session, onSuccess }) {
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Add Child</h2>
+    <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold text-primary-strong">Add Child</h2>
       <form onSubmit={handleAddChild} className="flex flex-col gap-4 max-w-sm">
         <div>
-          <label className="block text-sm font-medium text-[var(--color-muted)] mb-1">First Name</label>
+          <label className="block text-sm font-medium text-muted mb-1">First Name</label>
           <input
             type="text"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-[var(--color-muted)] mb-1">Last Name</label>
+          <label className="block text-sm font-medium text-muted mb-1">Last Name</label>
           <input
             type="text"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             required
           />
         </div>
         <button
           type="submit"
           disabled={saving}
-          className="mt-2 rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
+          className="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-strong disabled:opacity-50"
         >
           {saving ? "Saving..." : "Create Child"}
         </button>

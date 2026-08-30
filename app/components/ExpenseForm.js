@@ -134,15 +134,15 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
   }
 
   return (
-    <div className={isEdit ? "bg-[var(--color-surface)] p-4 border border-[var(--color-accent)] rounded-lg m-2" : "rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm"}>
-      {!isEdit && <p className="mb-3 text-sm font-semibold text-[var(--color-primary-strong)]">Add expense</p>}
+    <div className={isEdit ? "bg-surface p-4 border border-accent rounded-lg m-2" : "rounded-2xl border border-border bg-surface p-4 shadow-sm"}>
+      {!isEdit && <p className="mb-3 text-sm font-semibold text-primary-strong">Add expense</p>}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
           <input
             type="date"
             value={form.created_at}
             onChange={(e) => setForm({ ...form, created_at: e.target.value })}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
           <input
             type="number"
@@ -150,12 +150,12 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
             placeholder="Amount"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
           <select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="education">Education</option>
             <option value="aftercare">Aftercare</option>
@@ -163,7 +163,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           <select
             value={form.child_id}
             onChange={(e) => setForm({ ...form, child_id: e.target.value })}
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="">Select child</option>
             {children.map((child) => (
@@ -178,11 +178,11 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           placeholder="Notes (e.g. tuition, camp, supplies)"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className="mb-3 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          className="mb-3 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         />
         
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-3">
-          <label className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={form.reimbursement_requested}
@@ -190,7 +190,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
             />
             {isEdit ? "Req" : "Reimbursement Requested"}
           </label>
-          <label className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+          <label className="flex items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
               checked={form.reimbursement_granted}
@@ -201,15 +201,15 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-4">
-          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+          <label className="text-sm text-muted flex flex-col gap-1">
             <span className="font-medium">{isEdit ? "New Receipt (optional):" : "Receipt:"}</span>
             <input type="file" accept="image/*,application/pdf" onChange={(e) => setReceiptFile(e.target.files[0] || null)} className="text-xs" />
           </label>
-          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+          <label className="text-sm text-muted flex flex-col gap-1">
             <span className="font-medium">{isEdit ? "New Invoice (optional):" : "Invoice:"}</span>
             <input type="file" accept="image/*,application/pdf" onChange={(e) => setInvoiceFile(e.target.files[0] || null)} className="text-xs" />
           </label>
-          <label className="text-sm text-[var(--color-muted)] flex flex-col gap-1">
+          <label className="text-sm text-muted flex flex-col gap-1">
             <span className="font-medium">{isEdit ? "New Proof (optional):" : "Proof of Payment:"}</span>
             <input type="file" accept="image/*,application/pdf" onChange={(e) => setProofFile(e.target.files[0] || null)} className="text-xs" />
           </label>
@@ -221,7 +221,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
               type="button"
               onClick={onCancel}
               disabled={saving}
-              className="text-sm font-medium text-gray-500 hover:text-gray-700"
+              className="text-sm font-medium text-muted hover:text-text"
             >
               Cancel
             </button>
@@ -229,7 +229,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-[var(--color-primary)] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
+            className="rounded-md bg-primary px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-primary-strong disabled:opacity-50"
           >
             {saving ? "Saving..." : (isEdit ? "Save Changes" : "Add expense")}
           </button>

@@ -245,32 +245,32 @@ export default function CreateExpenseReport({ session, onSuccess }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Create Expense Report</h2>
+      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+        <h2 className="mb-4 text-lg font-semibold text-primary-strong">Create Expense Report</h2>
         
         {expenses.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">No outstanding expenses to report. All expenses have already had a reimbursement requested!</p>
+          <p className="text-sm text-muted">No outstanding expenses to report. All expenses have already had a reimbursement requested!</p>
         ) : (
           <form onSubmit={handleGenerateReport} className="flex flex-col gap-5">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-muted)] mb-1">Report Name (Optional)</label>
+              <label className="block text-sm font-medium text-muted mb-1">Report Name (Optional)</label>
               <input
                 type="text"
                 placeholder={`Expense Report - ${new Date().toLocaleDateString()}`}
                 value={reportName}
                 onChange={(e) => setReportName(e.target.value)}
-                className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className="w-full max-w-sm rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
             
             <div>
-              <p className="mb-2 text-sm font-medium text-[var(--color-primary-strong)]">Filter Expenses</p>
+              <p className="mb-2 text-sm font-medium text-primary-strong">Filter Expenses</p>
               <div className="flex flex-wrap gap-2 mb-3">
-                <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+                <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface px-1 py-1 focus-within:ring-2 focus-within:ring-accent">
                   {filterCategories.map(cat => (
-                    <span key={cat} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs capitalize">
+                    <span key={cat} className="flex items-center gap-1 bg-accent-soft text-primary-strong px-2 py-0.5 rounded text-xs capitalize">
                       {cat === "education" ? "Education" : "Aftercare"}
-                      <button type="button" onClick={() => removeCategoryFilter(cat)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+                      <button type="button" onClick={() => removeCategoryFilter(cat)} className="hover:text-error font-bold" title="Remove filter">×</button>
                     </span>
                   ))}
                   <select
@@ -289,11 +289,11 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                   </select>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1 focus-within:ring-2 focus-within:ring-[var(--color-accent)]">
+                <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface px-1 py-1 focus-within:ring-2 focus-within:ring-accent">
                   {filterKids.map(kid => (
-                    <span key={kid} className="flex items-center gap-1 bg-[var(--color-accent-soft)] text-[var(--color-primary-strong)] px-2 py-0.5 rounded text-xs">
+                    <span key={kid} className="flex items-center gap-1 bg-accent-soft text-primary-strong px-2 py-0.5 rounded text-xs">
                       {kid} 
-                      <button type="button" onClick={() => removeKidFilter(kid)} className="hover:text-red-500 font-bold" title="Remove filter">×</button>
+                      <button type="button" onClick={() => removeKidFilter(kid)} className="hover:text-error font-bold" title="Remove filter">×</button>
                     </span>
                   ))}
                   <select
@@ -316,21 +316,21 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                     title="Start date"
                     value={filterStartDate}
                     onChange={(e) => setFilterStartDate(e.target.value)}
-                    className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
-                  <span className="text-[var(--color-muted)] text-sm">-</span>
+                  <span className="text-muted text-sm">-</span>
                   <input
                     type="date"
                     title="End date"
                     value={filterEndDate}
                     onChange={(e) => setFilterEndDate(e.target.value)}
-                    className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   />
                 </div>
                 <select
                   value={filterReimbursedReq}
                   onChange={(e) => setFilterReimbursedReq(e.target.value)}
-                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 >
                   <option value="">Reimbursement Req: Any</option>
                   <option value="yes">Requested</option>
@@ -339,7 +339,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                 <select
                   value={filterReimbursedGranted}
                   onChange={(e) => setFilterReimbursedGranted(e.target.value)}
-                  className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 >
                   <option value="">Reimbursement Received: Any</option>
                   <option value="yes">Received</option>
@@ -349,13 +349,13 @@ export default function CreateExpenseReport({ session, onSuccess }) {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-medium text-[var(--color-primary-strong)]">Select Expenses to Include</p>
-              <div className="rounded-md border border-[var(--color-border)] divide-y divide-[var(--color-border)] max-h-96 overflow-y-auto">
+              <p className="mb-2 text-sm font-medium text-primary-strong">Select Expenses to Include</p>
+              <div className="rounded-md border border-border divide-y divide-border max-h-96 overflow-y-auto">
                 {filteredExpenses.length === 0 && (
-                  <p className="p-3 text-sm text-[var(--color-muted)]">No expenses match these filters.</p>
+                  <p className="p-3 text-sm text-muted">No expenses match these filters.</p>
                 )}
                 {filteredExpenses.map((e) => (
-                  <label key={e.id} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[var(--color-accent-soft)] transition">
+                  <label key={e.id} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent-soft transition">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(e.id)}
@@ -365,12 +365,12 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                     <div className="flex-1 flex justify-between text-sm">
                       <div>
                         <span className="font-medium">{e.child ? `${e.child.first_name} ${e.child.last_name}` : "Unknown"}</span>
-                        <span className="text-[var(--color-muted)] ml-2 capitalize">— {e.category}</span>
-                        {e.description && <div className="text-xs text-[var(--color-muted)] mt-1">{e.description}</div>}
+                        <span className="text-muted ml-2 capitalize">— {e.category}</span>
+                        {e.description && <div className="text-xs text-muted mt-1">{e.description}</div>}
                       </div>
                       <div className="text-right">
                         <div className="font-semibold">${Number(e.amount).toFixed(2)}</div>
-                        <div className="text-xs text-[var(--color-muted)]">{new Date(e.created_at).toISOString().slice(0,10)}</div>
+                        <div className="text-xs text-muted">{new Date(e.created_at).toISOString().slice(0,10)}</div>
                       </div>
                     </div>
                   </label>
@@ -382,7 +382,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
               <button
                 type="submit"
                 disabled={generating || selectedIds.length === 0}
-                className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)] disabled:opacity-50"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-strong disabled:opacity-50"
               >
                 {generating ? "Generating..." : `Generate Report (${selectedIds.length} selected)`}
               </button>
@@ -392,14 +392,14 @@ export default function CreateExpenseReport({ session, onSuccess }) {
       </div>
 
       {existingReports.length > 0 && (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-[var(--color-primary-strong)]">Past Expense Reports</h2>
-          <div className="rounded-md border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-primary-strong">Past Expense Reports</h2>
+          <div className="rounded-md border border-border divide-y divide-border">
             {existingReports.map((report) => (
               <div key={report.id} className="flex items-center justify-between p-3 text-sm">
                 <div>
                   <div className="font-medium">{report.name}</div>
-                  <div className="text-xs text-[var(--color-muted)]">
+                  <div className="text-xs text-muted">
                     Created: {new Date(report.created_at).toLocaleDateString()}
                     <span className="mx-2">•</span>
                     Status: <span className="capitalize">{report.status}</span>
@@ -408,13 +408,13 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => viewReportFile(report.id)}
-                    className="rounded-md bg-[var(--color-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--color-primary-strong)] hover:bg-[var(--color-border)] transition"
+                    className="rounded-md bg-accent-soft px-3 py-1.5 text-xs font-semibold text-primary-strong hover:bg-border transition"
                   >
                     View Report
                   </button>
                   <button
                     onClick={() => deleteReport(report.id)}
-                    className="text-xs font-semibold text-[var(--color-muted)] hover:text-red-600 transition ml-2"
+                    className="text-xs font-semibold text-muted hover:text-error-strong transition ml-2"
                   >
                     Delete
                   </button>

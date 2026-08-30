@@ -13,16 +13,16 @@ export default function Dashboard({ session }) {
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-8">
-      <div className="mb-6 flex items-center justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+      <div className="mb-6 flex items-center justify-between rounded-2xl border border-border bg-surface p-4 shadow-sm">
         <div>
-          <h1 className="text-lg font-semibold text-[var(--color-primary-strong)]">
+          <h1 className="text-lg font-semibold text-primary-strong">
             Welcome, {session?.user?.email || "User"}
           </h1>
-          <p className="text-sm text-[var(--color-muted)]">Manage your kids expenses</p>
+          <p className="text-sm text-muted">Manage your kids expenses</p>
         </div>
         <button
           onClick={() => supabase.auth.signOut()}
-          className="text-sm font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-strong)]"
+          className="text-sm font-medium text-primary hover:text-primary-strong"
         >
           Sign out
         </button>
@@ -33,8 +33,8 @@ export default function Dashboard({ session }) {
           onClick={() => setCurrentView("home")}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
             currentView === "home"
-              ? "bg-[var(--color-primary)] text-white"
-              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+              ? "bg-primary text-white"
+              : "bg-surface border border-border text-primary-strong hover:bg-accent-soft"
           }`}
         >
           Home
@@ -43,8 +43,8 @@ export default function Dashboard({ session }) {
           onClick={() => setCurrentView("createChild")}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
             currentView === "createChild"
-              ? "bg-[var(--color-primary)] text-white"
-              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+              ? "bg-primary text-white"
+              : "bg-surface border border-border text-primary-strong hover:bg-accent-soft"
           }`}
         >
           Create Child
@@ -53,8 +53,8 @@ export default function Dashboard({ session }) {
           onClick={() => setCurrentView("create")}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
             currentView === "create"
-              ? "bg-[var(--color-primary)] text-white"
-              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+              ? "bg-primary text-white"
+              : "bg-surface border border-border text-primary-strong hover:bg-accent-soft"
           }`}
         >
           Create Expense
@@ -63,8 +63,8 @@ export default function Dashboard({ session }) {
           onClick={() => setCurrentView("list")}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
             currentView === "list"
-              ? "bg-[var(--color-primary)] text-white"
-              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+              ? "bg-primary text-white"
+              : "bg-surface border border-border text-primary-strong hover:bg-accent-soft"
           }`}
         >
           Show Expenses
@@ -73,8 +73,8 @@ export default function Dashboard({ session }) {
           onClick={() => setCurrentView("createReport")}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
             currentView === "createReport"
-              ? "bg-[var(--color-primary)] text-white"
-              : "bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-primary-strong)] hover:bg-[var(--color-accent-soft)]"
+              ? "bg-primary text-white"
+              : "bg-surface border border-border text-primary-strong hover:bg-accent-soft"
           }`}
         >
           Create Expense Report
