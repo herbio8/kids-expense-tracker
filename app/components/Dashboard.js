@@ -4,8 +4,8 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import CreateExpense from "./CreateExpense";
 import ExpenseList from "./ExpenseList";
-import CreateChild from "./CreateChild";
 import CreateExpenseReport from "./CreateExpenseReport";
+import Profile from "./Profile";
 import Home from "./Home";
 
 export default function Dashboard({ session }) {
@@ -37,7 +37,7 @@ export default function Dashboard({ session }) {
         <div className="p-4 flex flex-col gap-2">
           {[
             { id: "home", label: "Home" },
-            { id: "createChild", label: "Create Child" },
+            { id: "profile", label: "Profile" },
             { id: "create", label: "Create Expense" },
             { id: "list", label: "Show Expenses" },
             { id: "createReport", label: "Create Expense Report" }
@@ -84,11 +84,8 @@ export default function Dashboard({ session }) {
         <Home session={session} />
       )}
       
-      {currentView === "createChild" && (
-        <CreateChild
-          session={session}
-          onSuccess={() => setCurrentView("home")}
-        />
+      {currentView === "profile" && (
+        <Profile session={session} />
       )}
       
       {currentView === "create" && (
