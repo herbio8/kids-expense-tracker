@@ -1,4 +1,4 @@
-# Kids expense tracker
+# Kids expense tracker - By Herbio
 
 Next.js + Supabase app for tracking education and aftercare expenses,
 with reimbursement tracking and receipt uploads. Free to run at
