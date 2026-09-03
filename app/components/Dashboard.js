@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import CreateExpense from "./CreateExpense";
-import ExpenseList from "./ExpenseList";
-import CreateExpenseReport from "./CreateExpenseReport";
 import Profile from "./Profile";
 import Home from "./Home";
+import Expenses from "./Expenses";
 
 export default function Dashboard({ session }) {
   const [currentView, setCurrentView] = useState("home");
@@ -38,9 +36,7 @@ export default function Dashboard({ session }) {
           {[
             { id: "home", label: "Home" },
             { id: "profile", label: "Profile" },
-            { id: "create", label: "Create Expense" },
-            { id: "list", label: "Show Expenses" },
-            { id: "createReport", label: "Create Expense Report" }
+            { id: "expenses", label: "Expenses" }
           ].map((item) => (
             <button
               key={item.id}
@@ -88,22 +84,8 @@ export default function Dashboard({ session }) {
         <Profile session={session} />
       )}
       
-      {currentView === "create" && (
-        <CreateExpense
-          session={session}
-          onSuccess={() => setCurrentView("list")}
-        />
-      )}
-      
-      {currentView === "list" && (
-        <ExpenseList session={session} />
-      )}
-
-      {currentView === "createReport" && (
-        <CreateExpenseReport
-          session={session}
-          onSuccess={() => setCurrentView("list")}
-        />
+      {currentView === "expenses" && (
+        <Expenses session={session} />
       )}
       
     </div>
