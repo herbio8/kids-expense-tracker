@@ -63,7 +63,7 @@ export default function Dashboard({ session }) {
           </button>
           <div>
             <h1 className="text-lg font-semibold text-primary-strong">
-              Welcome, {session?.user?.email || "User"}
+              Welcome, {session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email || "User"}
             </h1>
             <p className="text-sm text-muted">Manage your kids expenses</p>
           </div>
