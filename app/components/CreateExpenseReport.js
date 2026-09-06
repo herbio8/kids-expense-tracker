@@ -332,6 +332,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                   <option value="unsubmitted">Unsubmitted</option>
                   <option value="requested">Requested</option>
                   <option value="reimbursed">Reimbursed</option>
+                  <option value="rejected">Rejected</option>
                 </select>
               </div>
             </div>

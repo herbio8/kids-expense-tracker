@@ -13,10 +13,10 @@ DROP TYPE IF EXISTS report_status CASCADE;
 CREATE TYPE expense_category AS ENUM ('education', 'aftercare');
 
 -- 1.a. Create Enum type for Expense Status
-CREATE TYPE expense_status AS ENUM ('unsubmitted', 'requested', 'reimbursed');
+CREATE TYPE expense_status AS ENUM ('unsubmitted', 'requested', 'reimbursed', 'rejected');
 
 -- 1.b. Create Enum type for Report Status
-CREATE TYPE report_status AS ENUM ('draft', 'submitted', 'paid');
+CREATE TYPE report_status AS ENUM ('draft', 'submitted', 'paid', 'rejected');
 
 -- 2. Create Parent table
 CREATE TABLE parent (

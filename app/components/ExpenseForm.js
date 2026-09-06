@@ -231,6 +231,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
               <option value="unsubmitted">Unsubmitted</option>
               <option value="requested">Requested</option>
               <option value="reimbursed">Reimbursed</option>
+              <option value="rejected">Rejected</option>
             </select>
           </label>
         </div>

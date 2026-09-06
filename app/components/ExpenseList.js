@@ -178,6 +178,7 @@ export default function ExpenseList({ session }) {
           <option value="unsubmitted">Unsubmitted</option>
           <option value="requested">Requested</option>
           <option value="reimbursed">Reimbursed</option>
+          <option value="rejected">Rejected</option>
         </select>
       </div>
 
