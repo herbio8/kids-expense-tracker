@@ -160,6 +160,7 @@ export async function generateHTMLReport(supabase, selectedExpensesList, finalRe
 
   let grandTotal = 0;
   const allDocs = [];
+  const urlToDocIndex = new Map();
 
   for (const [kidName, exps] of Object.entries(grouped)) {
     html += `<div class="section">`;
@@ -180,32 +181,41 @@ export async function generateHTMLReport(supabase, selectedExpensesList, finalRe
       let docs = [];
       const descStr = exp.description ? ` - ${exp.description}` : "";
         
-      if (exp.receipt_url) {
-        const dataUrl = await getBase64DataUrl(exp.receipt_url);
-        if (dataUrl) {
-          const docNum = allDocs.length + 1;
-          docs.push(`Receipt [${docNum}]`);
-          allDocs.push({ label: `Receipt for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
-        }
-      }
-      if (exp.invoice_url) {
-        const dataUrl = await getBase64DataUrl(exp.invoice_url);
-        if (dataUrl) {
-          const docNum = allDocs.length + 1;
-          docs.push(`Invoice [${docNum}]`);
-          allDocs.push({ label: `Invoice for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
-        }
-      }
-      if (exp.proof_of_payment_url) {
-        const dataUrl = await getBase64DataUrl(exp.proof_of_payment_url);
-        if (dataUrl) {
-          const docNum = allDocs.length + 1;
-          docs.push(`Proof of Payment [${docNum}]`);
-          allDocs.push({ label: `Proof of Payment for ${kidName}${descStr}`, dataUrl, type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" });
-        }
-      }
+      const processDoc = async (url, docTypeLabel) => {
+        if (!url) return;
         
-        const docsStr = docs.length > 0 ? `<span class="attachment">${docs.join(", ")}</span>` : `<span style="color: #9ca3af; font-size: 0.875rem;">None</span>`;
+        let docNum;
+        if (urlToDocIndex.has(url)) {
+          const docIndex = urlToDocIndex.get(url);
+          docNum = docIndex + 1;
+          
+          if (!allDocs[docIndex].label.includes(kidName)) {
+            allDocs[docIndex].label += `, ${kidName}`;
+          }
+        } else {
+          const dataUrl = await getBase64DataUrl(url);
+          if (dataUrl) {
+            const docIndex = allDocs.length;
+            urlToDocIndex.set(url, docIndex);
+            docNum = docIndex + 1;
+            allDocs.push({ 
+              label: `${docTypeLabel} for ${kidName}${descStr}`, 
+              dataUrl, 
+              type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" 
+            });
+          }
+        }
+        
+        if (docNum) {
+          docs.push(`${docTypeLabel} [${docNum}]`);
+        }
+      };
+
+      await processDoc(exp.receipt_url, "Receipt");
+      await processDoc(exp.invoice_url, "Invoice");
+      await processDoc(exp.proof_of_payment_url, "Proof of Payment");
+
+      const docsStr = docs.length > 0 ? `<span class="attachment">${docs.join(", ")}</span>` : `<span style="color: #9ca3af; font-size: 0.875rem;">None</span>`;
 
       html += `<tr>
         <td>${date}</td>

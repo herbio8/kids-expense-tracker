@@ -7,7 +7,7 @@ const emptyForm = {
   created_at: new Date().toISOString().slice(0, 10),
   amount: "",
   category: "education",
-  child_id: "",
+  child_ids: [],
   description: "",
   reimbursement_requested: false,
   reimbursement_granted: false,
@@ -23,7 +23,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           created_at: new Date(expense.created_at).toISOString().slice(0, 10),
           amount: expense.amount,
           category: expense.category,
-          child_id: expense.child_id || "",
+          child_ids: [expense.child_id].filter(Boolean),
           description: expense.description || "",
           reimbursement_requested: expense.reimbursement_requested || false,
           reimbursement_granted: expense.reimbursement_granted || false,
@@ -52,41 +52,52 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.amount || Number(form.amount) <= 0) return;
-    if (!form.child_id) {
-      alert("Please select a child before saving the expense.");
+    if (!form.child_ids || form.child_ids.length === 0) {
+      alert("Please select at least one child before saving the expense.");
       return;
     }
 
     setSaving(true);
 
     try {
-      const basePayload = {
-        created_at: new Date(form.created_at).toISOString(),
-        amount: Number(form.amount),
-        category: form.category,
-        description: form.description || null,
-        reimbursement_requested: form.reimbursement_requested,
-        reimbursement_granted: form.reimbursement_granted,
-        child_id: form.child_id
-      };
+      const amountPerChild = (Number(form.amount) / form.child_ids.length).toFixed(2);
 
-      let savedExpenseId;
+      let savedExpenseIds = [];
 
       if (isEdit) {
+        const basePayload = {
+          created_at: new Date(form.created_at).toISOString(),
+          amount: Number(form.amount),
+          category: form.category,
+          description: form.description || null,
+          reimbursement_requested: form.reimbursement_requested,
+          reimbursement_granted: form.reimbursement_granted,
+          child_id: form.child_ids[0]
+        };
+
         const { error: updateError } = await supabase
           .from("expense")
           .update(basePayload)
           .eq("id", expense.id);
         if (updateError) throw updateError;
-        savedExpenseId = expense.id;
+        savedExpenseIds = [expense.id];
       } else {
+        const payloads = form.child_ids.map((child_id) => ({
+          created_at: new Date(form.created_at).toISOString(),
+          amount: Number(amountPerChild),
+          category: form.category,
+          description: form.description || null,
+          reimbursement_requested: form.reimbursement_requested,
+          reimbursement_granted: form.reimbursement_granted,
+          child_id: child_id
+        }));
+
         const { data: inserted, error: insertError } = await supabase
           .from("expense")
-          .insert(basePayload)
-          .select()
-          .single();
+          .insert(payloads)
+          .select();
         if (insertError) throw insertError;
-        savedExpenseId = inserted.id;
+        savedExpenseIds = inserted.map((i) => i.id);
       }
 
       const filesToUpload = [
@@ -95,9 +106,11 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
         { file: proofFile, column: 'proof_of_payment_url' },
       ];
 
+      const mainExpenseId = savedExpenseIds[0];
+
       for (const { file: f, column } of filesToUpload) {
-        if (f && savedExpenseId) {
-          const path = `${session.user.id}/${savedExpenseId}/${column}_${f.name}`;
+        if (f && mainExpenseId) {
+          const path = `${session.user.id}/${mainExpenseId}/${column}_${f.name}`;
           try {
             const { error: uploadError } = await supabase.storage.from("receipts").upload(path, f, {
               cacheControl: "3600",
@@ -105,7 +118,14 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
             });
 
             if (!uploadError) {
-              await supabase.from("expense").update({ [column]: path }).eq("id", savedExpenseId);
+              const { error: updateAllError } = await supabase
+                .from("expense")
+                .update({ [column]: path })
+                .in("id", savedExpenseIds);
+              
+              if (updateAllError) {
+                console.error(`Failed to link ${column} to all expenses`, updateAllError);
+              }
             } else {
               console.error(`${column} upload failed`, uploadError);
               alert(`Expense saved, but ${column} upload failed: ` + uploadError.message);
@@ -160,18 +180,41 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
             <option value="education">Education</option>
             <option value="aftercare">Aftercare</option>
           </select>
-          <select
-            value={form.child_id}
-            onChange={(e) => setForm({ ...form, child_id: e.target.value })}
-            className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          >
-            <option value="">Select child</option>
-            {children.map((child) => (
-              <option key={child.id} value={child.id}>
-                {child.first_name} {child.last_name}
-              </option>
-            ))}
-          </select>
+          {isEdit ? (
+            <select
+              value={form.child_ids[0] || ""}
+              onChange={(e) => setForm({ ...form, child_ids: [e.target.value] })}
+              className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="">Select child</option>
+              {children.map((child) => (
+                <option key={child.id} value={child.id}>
+                  {child.first_name} {child.last_name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex flex-col justify-center px-1 gap-1">
+              {children.length === 0 && <span className="text-xs text-muted">No children found</span>}
+              {children.map((child) => (
+                <label key={child.id} className="flex items-center gap-1.5 text-sm cursor-pointer text-text">
+                  <input
+                    type="checkbox"
+                    checked={form.child_ids.includes(child.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setForm({ ...form, child_ids: [...form.child_ids, child.id] });
+                      } else {
+                        setForm({ ...form, child_ids: form.child_ids.filter((id) => id !== child.id) });
+                      }
+                    }}
+                    className="accent-accent"
+                  />
+                  <span className="truncate">{child.first_name}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
         <input
           type="text"
