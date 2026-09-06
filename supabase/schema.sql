@@ -181,3 +181,38 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- ==========================================
+-- STORAGE POLICIES
+-- ==========================================
+
+-- Ensure RLS is enabled on the objects table
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- 1. Create SELECT policy (View)
+DROP POLICY IF EXISTS "Users can view their own receipts" ON storage.objects;
+CREATE POLICY "Users can view their own receipts"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 2. Create INSERT policy (Upload new)
+DROP POLICY IF EXISTS "Users can upload their own receipts" ON storage.objects;
+CREATE POLICY "Users can upload their own receipts"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 3. Create UPDATE policy (Overwrite existing)
+DROP POLICY IF EXISTS "Users can update their own receipts" ON storage.objects;
+CREATE POLICY "Users can update their own receipts"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 4. Create DELETE policy (Remove files)
+DROP POLICY IF EXISTS "Users can delete their own receipts" ON storage.objects;
+CREATE POLICY "Users can delete their own receipts"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'receipts' AND auth.uid()::text = (storage.foldername(name))[1]);

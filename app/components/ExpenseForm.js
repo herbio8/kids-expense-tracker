@@ -77,7 +77,33 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           .update(basePayload)
           .eq("id", expense.id);
         if (updateError) throw updateError;
-        savedExpenseIds = [expense.id];
+        
+        // Find sibling expenses to update their documents too
+        let query = supabase.from("expense").select("id");
+        if (expense.receipt_url) {
+          query = query.eq("receipt_url", expense.receipt_url);
+        } else if (expense.invoice_url) {
+          query = query.eq("invoice_url", expense.invoice_url);
+        } else if (expense.proof_of_payment_url) {
+          query = query.eq("proof_of_payment_url", expense.proof_of_payment_url);
+        } else {
+          // Fallback if no documents exist: match exact amount, date, and description
+          query = query
+            .eq("amount", expense.amount)
+            .eq("created_at", expense.created_at);
+          if (expense.description) {
+            query = query.eq("description", expense.description);
+          } else {
+            query = query.is("description", null);
+          }
+        }
+
+        const { data: siblings } = await query;
+        if (siblings && siblings.length > 0) {
+          savedExpenseIds = siblings.map(s => s.id);
+        } else {
+          savedExpenseIds = [expense.id];
+        }
       } else {
         const payloads = form.child_ids.map((child_id) => ({
           created_at: new Date(form.created_at).toISOString(),
