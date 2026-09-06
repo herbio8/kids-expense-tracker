@@ -10,8 +10,7 @@ export default function ExpenseList({ session }) {
   const [filterKids, setFilterKids] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  const [filterReimbursedReq, setFilterReimbursedReq] = useState("");
-  const [filterReimbursedGranted, setFilterReimbursedGranted] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [editingExpenseId, setEditingExpenseId] = useState(null);
 
   useEffect(() => {
@@ -74,16 +73,13 @@ export default function ExpenseList({ session }) {
     if (filterKids.length > 0 && !filterKids.includes(kidName)) return false;
     if (filterStartDate && dateFormatted < filterStartDate) return false;
     if (filterEndDate && dateFormatted > filterEndDate) return false;
-    if (filterReimbursedReq === "yes" && !e.reimbursement_requested) return false;
-    if (filterReimbursedReq === "no" && e.reimbursement_requested) return false;
-    if (filterReimbursedGranted === "yes" && !e.reimbursement_granted) return false;
-    if (filterReimbursedGranted === "no" && e.reimbursement_granted) return false;
+    if (filterStatus && e.status !== filterStatus) return false;
     return true;
   });
 
   const total = filtered.reduce((s, e) => s + Number(e.amount), 0);
   const pendingReimbursement = expenses
-    .filter((e) => e.reimbursement_requested && !e.reimbursement_granted)
+    .filter((e) => e.status === "requested")
     .reduce((s, e) => s + Number(e.amount), 0);
 
   const uniqueChildNames = [...new Set(expenses.map(e => e.child ? `${e.child.first_name} ${e.child.last_name}`.trim() : "").filter(Boolean))];
@@ -174,22 +170,14 @@ export default function ExpenseList({ session }) {
           />
         </div>
         <select
-          value={filterReimbursedReq}
-          onChange={(e) => setFilterReimbursedReq(e.target.value)}
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
           className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         >
-          <option value="">Reimbursement Req: Any</option>
-          <option value="yes">Requested</option>
-          <option value="no">Not Requested</option>
-        </select>
-        <select
-          value={filterReimbursedGranted}
-          onChange={(e) => setFilterReimbursedGranted(e.target.value)}
-          className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        >
-          <option value="">Reimbursement Received: Any</option>
-          <option value="yes">Received</option>
-          <option value="no">Not Received</option>
+          <option value="">Status: Any</option>
+          <option value="unsubmitted">Unsubmitted</option>
+          <option value="requested">Requested</option>
+          <option value="reimbursed">Reimbursed</option>
         </select>
       </div>
 
@@ -247,11 +235,8 @@ export default function ExpenseList({ session }) {
                           Proof of Payment
                         </button>
                       )}
-                      <span className="ml-2 border-l border-border pl-2">
-                        Req: {e.reimbursement_requested ? <span className="text-success-strong font-medium">Yes</span> : "No"}
-                      </span>
-                      <span>
-                        Rcvd: {e.reimbursement_granted ? <span className="text-success-strong font-medium">Yes</span> : "No"}
+                      <span className="ml-2 border-l border-border pl-2 capitalize text-muted">
+                        Status: <span className="font-medium text-text">{e.status}</span>
                       </span>
                     </div>
                   </div>

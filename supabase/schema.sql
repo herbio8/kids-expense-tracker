@@ -6,9 +6,17 @@ DROP TABLE IF EXISTS parent_child CASCADE;
 DROP TABLE IF EXISTS child CASCADE;
 DROP TABLE IF EXISTS parent CASCADE;
 DROP TYPE IF EXISTS expense_category CASCADE;
+DROP TYPE IF EXISTS expense_status CASCADE;
+DROP TYPE IF EXISTS report_status CASCADE;
 
 -- 1. Create Enum type for Expense Category
 CREATE TYPE expense_category AS ENUM ('education', 'aftercare');
+
+-- 1.a. Create Enum type for Expense Status
+CREATE TYPE expense_status AS ENUM ('unsubmitted', 'requested', 'reimbursed');
+
+-- 1.b. Create Enum type for Report Status
+CREATE TYPE report_status AS ENUM ('draft', 'submitted', 'paid');
 
 -- 2. Create Parent table
 CREATE TABLE parent (
@@ -42,8 +50,7 @@ CREATE TABLE expense (
   invoice_url TEXT,
   receipt_url TEXT,
   proof_of_payment_url TEXT,
-  reimbursement_requested BOOLEAN NOT NULL DEFAULT false,
-  reimbursement_granted BOOLEAN NOT NULL DEFAULT false
+  status expense_status NOT NULL DEFAULT 'unsubmitted'
 );
 
 -- 6. Create Expense Report table
@@ -52,7 +59,7 @@ CREATE TABLE expense_report (
   parent_id UUID NOT NULL REFERENCES parent(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   name TEXT NOT NULL, -- e.g., "August 2026 Reimbursements"
-  status TEXT NOT NULL DEFAULT 'draft' -- e.g., draft, submitted, paid
+  status report_status NOT NULL DEFAULT 'draft'
 );
 
 -- 7. Create Junction table for Report <-> Expense (Many-to-Many / One-to-Many mapping)

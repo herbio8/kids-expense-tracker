@@ -16,8 +16,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
   const [filterKids, setFilterKids] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  const [filterReimbursedReq, setFilterReimbursedReq] = useState("");
-  const [filterReimbursedGranted, setFilterReimbursedGranted] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   useEffect(() => {
     loadExpenses();
@@ -82,11 +81,11 @@ export default function CreateExpenseReport({ session, onSuccess }) {
       const stillLinkedIds = new Set(stillLinked?.map(link => link.expense_id) || []);
       const completelyOrphanedIds = expenseIds.filter(id => !stillLinkedIds.has(id));
 
-      // 4. Update the orphaned expenses to reimbursement_requested = false
+      // 4. Update the orphaned expenses to status = 'unsubmitted'
       if (completelyOrphanedIds.length > 0) {
         await supabase
           .from("expense")
-          .update({ reimbursement_requested: false })
+          .update({ status: 'unsubmitted' })
           .in("id", completelyOrphanedIds);
       }
     }
@@ -164,10 +163,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
     if (filterKids.length > 0 && !filterKids.includes(kidName)) return false;
     if (filterStartDate && dateFormatted < filterStartDate) return false;
     if (filterEndDate && dateFormatted > filterEndDate) return false;
-    if (filterReimbursedReq === "yes" && !e.reimbursement_requested) return false;
-    if (filterReimbursedReq === "no" && e.reimbursement_requested) return false;
-    if (filterReimbursedGranted === "yes" && !e.reimbursement_granted) return false;
-    if (filterReimbursedGranted === "no" && e.reimbursement_granted) return false;
+    if (filterStatus && e.status !== filterStatus) return false;
     return true;
   });
 
@@ -207,10 +203,10 @@ export default function CreateExpenseReport({ session, onSuccess }) {
 
       if (mappingError) throw mappingError;
 
-      // 3. Mark the selected expenses as reimbursement_requested = true
+      // 3. Mark the selected expenses as status = 'requested'
       const { error: updateError } = await supabase
         .from("expense")
-        .update({ reimbursement_requested: true })
+        .update({ status: 'requested' })
         .in("id", selectedIds);
 
       if (updateError) throw updateError;

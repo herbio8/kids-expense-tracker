@@ -9,8 +9,7 @@ const emptyForm = {
   category: "education",
   child_ids: [],
   description: "",
-  reimbursement_requested: false,
-  reimbursement_granted: false,
+  status: "unsubmitted",
 };
 
 export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
@@ -25,8 +24,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           category: expense.category,
           child_ids: [expense.child_id].filter(Boolean),
           description: expense.description || "",
-          reimbursement_requested: expense.reimbursement_requested || false,
-          reimbursement_granted: expense.reimbursement_granted || false,
+          status: expense.status || "unsubmitted",
         }
       : emptyForm
   );
@@ -70,8 +68,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           amount: Number(form.amount),
           category: form.category,
           description: form.description || null,
-          reimbursement_requested: form.reimbursement_requested,
-          reimbursement_granted: form.reimbursement_granted,
+          status: form.status,
           child_id: form.child_ids[0]
         };
 
@@ -87,8 +84,7 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
           amount: Number(amountPerChild),
           category: form.category,
           description: form.description || null,
-          reimbursement_requested: form.reimbursement_requested,
-          reimbursement_granted: form.reimbursement_granted,
+          status: form.status,
           child_id: child_id
         }));
 
@@ -225,21 +221,17 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
         />
         
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-3">
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={form.reimbursement_requested}
-              onChange={(e) => setForm({ ...form, reimbursement_requested: e.target.checked })}
-            />
-            {isEdit ? "Req" : "Reimbursement Requested"}
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={form.reimbursement_granted}
-              onChange={(e) => setForm({ ...form, reimbursement_granted: e.target.checked })}
-            />
-            {isEdit ? "Rcvd" : "Reimbursement Granted"}
+          <label className="text-sm text-muted flex items-center gap-2">
+            Status:
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="unsubmitted">Unsubmitted</option>
+              <option value="requested">Requested</option>
+              <option value="reimbursed">Reimbursed</option>
+            </select>
           </label>
         </div>
         
