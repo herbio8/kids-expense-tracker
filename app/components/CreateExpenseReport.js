@@ -324,22 +324,14 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                   />
                 </div>
                 <select
-                  value={filterReimbursedReq}
-                  onChange={(e) => setFilterReimbursedReq(e.target.value)}
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
                   className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 >
-                  <option value="">Reimbursement Req: Any</option>
-                  <option value="yes">Requested</option>
-                  <option value="no">Not Requested</option>
-                </select>
-                <select
-                  value={filterReimbursedGranted}
-                  onChange={(e) => setFilterReimbursedGranted(e.target.value)}
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                >
-                  <option value="">Reimbursement Received: Any</option>
-                  <option value="yes">Received</option>
-                  <option value="no">Not Received</option>
+                  <option value="">Status: Any</option>
+                  <option value="unsubmitted">Unsubmitted</option>
+                  <option value="requested">Requested</option>
+                  <option value="reimbursed">Reimbursed</option>
                 </select>
               </div>
             </div>
