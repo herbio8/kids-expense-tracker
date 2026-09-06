@@ -139,3 +139,45 @@ WITH CHECK (
     SELECT id FROM expense_report WHERE parent_id = auth.uid()
   )
 );
+
+-- ==========================================
+-- TRIGGERS
+-- ==========================================
+
+-- Function to handle new user signups and insert them into the parent table
+CREATE OR REPLACE FUNCTION public.handle_new_user() 
+RETURNS TRIGGER AS $$
+DECLARE
+  full_name TEXT;
+  first_n TEXT;
+  last_n TEXT;
+BEGIN
+  -- Try to get the name from Google's metadata
+  full_name := COALESCE(
+    new.raw_user_meta_data->>'full_name', 
+    new.raw_user_meta_data->>'name', 
+    split_part(new.email, '@', 1) -- fallback to email prefix if no name
+  );
+
+  -- Split the name at the first space
+  first_n := split_part(full_name, ' ', 1);
+  last_n := substring(full_name from length(first_n) + 2);
+  
+  -- Fallback if no last name is provided
+  IF last_n IS NULL OR last_n = '' THEN
+    last_n := 'Unknown';
+  END IF;
+
+  -- Insert into the parent table
+  INSERT INTO public.parent (id, first_name, last_name)
+  VALUES (new.id, first_n, last_n);
+  
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to run on every new user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();

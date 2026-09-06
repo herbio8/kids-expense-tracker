@@ -93,9 +93,8 @@ export default function Login() {
           Sign in with Google
         </button>
 
-        <p className="text-xs text-muted mt-4">
-          Users are created in Supabase Dashboard -&gt; Authentication -&gt; Users.
-          Add yourself and your wife there — no public sign-up form exists.
+        <p className="text-xs text-muted mt-4 text-center">
+          Sign in with Google to automatically create your account.
         </p>
       </form>
     </div>
