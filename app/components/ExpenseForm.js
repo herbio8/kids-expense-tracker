@@ -106,7 +106,9 @@ export default function ExpenseForm({ session, expense, onSuccess, onCancel }) {
 
       for (const { file: f, column } of filesToUpload) {
         if (f && mainExpenseId) {
-          const path = `${session.user.id}/${mainExpenseId}/${column}_${f.name}`;
+          // Sanitize file name to avoid "Invalid key" errors from Supabase
+          const sanitizedName = f.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          const path = `${session.user.id}/${mainExpenseId}/${column}_${sanitizedName}`;
           try {
             const { error: uploadError } = await supabase.storage.from("receipts").upload(path, f, {
               cacheControl: "3600",
