@@ -34,32 +34,45 @@ export default function CreateExpenseReport({ session, onSuccess }) {
     }
   }
 
+  function sanitizeDownloadFilename(name, ext) {
+    if (!name) return `Expense_Report.${ext}`;
+    const clean = name
+      .replace(/[\\/:]/g, "-") // replace slashes and colons with dash
+      .replace(/[^a-zA-Z0-9_\-\s]/g, "") // remove non-safe characters
+      .trim()
+      .replace(/\s+/g, "_"); // replace spaces with underscores to prevent %20 encoding
+    return `${clean || "Expense_Report"}.${ext}`;
+  }
+
   async function viewReportFile(report) {
+    const fileName = sanitizeDownloadFilename(report.name, "xlsx");
     const xlsxPath = `${session.user.id}/reports/${report.id}.xlsx`;
     let { data, error } = await supabase.storage
       .from("receipts")
       .createSignedUrl(xlsxPath, 60, {
-        download: `${report.name}.xlsx`
+        download: fileName
       });
 
     if (error) {
       // Fallback to CSV for older reports
+      const csvFileName = sanitizeDownloadFilename(report.name, "csv");
       const csvPath = `${session.user.id}/reports/${report.id}.csv`;
       const fallbackCsv = await supabase.storage
         .from("receipts")
         .createSignedUrl(csvPath, 60, {
-          download: `${report.name}.csv`
+          download: csvFileName
         });
 
       if (!fallbackCsv.error) {
         data = fallbackCsv.data;
       } else {
         // Fallback to HTML for oldest reports
+        const htmlFileName = sanitizeDownloadFilename(report.name, "html");
         const htmlPath = `${session.user.id}/reports/${report.id}.html`;
         const fallbackHtml = await supabase.storage
           .from("receipts")
           .createSignedUrl(htmlPath, 60, {
-            download: `${report.name}.html`
+            download: htmlFileName
           });
 
         if (fallbackHtml.error) {
@@ -200,7 +213,8 @@ export default function CreateExpenseReport({ session, onSuccess }) {
       return;
     }
 
-    const finalReportName = reportName.trim() || `Expense Report - ${new Date().toLocaleDateString()}`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const finalReportName = reportName.trim() || `Expense Report - ${todayStr}`;
 
     setGenerating(true);
     try {
@@ -280,7 +294,7 @@ export default function CreateExpenseReport({ session, onSuccess }) {
               <label className="block text-sm font-medium text-muted mb-1">Report Name (Optional)</label>
               <input
                 type="text"
-                placeholder={`Expense Report - ${new Date().toLocaleDateString()}`}
+                placeholder={`Expense Report - ${new Date().toISOString().slice(0, 10)}`}
                 value={reportName}
                 onChange={(e) => setReportName(e.target.value)}
                 className="w-full max-w-sm rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
