@@ -1,4 +1,113 @@
-export async function generateHTMLReport(supabase, selectedExpensesList, finalReportName) {
+import ExcelJS from "exceljs";
+
+export async function generateExcelReport(supabase, selectedExpensesList, finalReportName) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Kids Expense Tracker";
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet("Expense Report", {
+    views: [{ showGridLines: true }],
+  });
+
+  // Column definitions with widths and alignments
+  worksheet.columns = [
+    { key: "child", width: 22 },
+    { key: "date", width: 14 },
+    { key: "category", width: 16 },
+    { key: "description", width: 36 },
+    { key: "amount", width: 18 },
+    { key: "receipt", width: 18 },
+    { key: "invoice", width: 18 },
+    { key: "proof", width: 20 },
+  ];
+
+  async function getSignedUrl(path) {
+    if (!path) return null;
+    // Generate a signed URL valid for 30 days
+    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 2592000);
+    if (error || !data) return null;
+    return data.signedUrl;
+  }
+
+  // Theme palette (matching the app's warm organic aesthetic)
+  const colors = {
+    primaryDark: "6F5339",   // Dark warm brown (Header & Grand Total)
+    primaryMid: "8A6A4B",    // Brand primary
+    accentSoft: "F6DFC9",    // Warm soft peach (Subtotals)
+    accentBorder: "D8A77A",  // Accent border
+    textDark: "4A3B2F",      // Main text
+    textMuted: "8F7D6F",     // Muted text
+    borderLight: "E8DCCF",   // Cell border
+    bgZebra: "FDFBF7",       // Alternating row background
+    linkBlue: "2563EB",      // Clickable link blue
+    white: "FFFFFF",
+  };
+
+  const thinBorder = {
+    top: { style: "thin", color: { argb: `FF${colors.borderLight}` } },
+    left: { style: "thin", color: { argb: `FF${colors.borderLight}` } },
+    bottom: { style: "thin", color: { argb: `FF${colors.borderLight}` } },
+    right: { style: "thin", color: { argb: `FF${colors.borderLight}` } },
+  };
+
+  // Row 1: Spacing
+  worksheet.addRow([]);
+  worksheet.getRow(1).height = 10;
+
+  // Row 2: Title Banner
+  const titleRow = worksheet.addRow([finalReportName]);
+  titleRow.height = 32;
+  worksheet.mergeCells("A2:H2");
+  const titleCell = worksheet.getCell("A2");
+  titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: `FF${colors.textDark}` } };
+  titleCell.alignment = { vertical: "middle", horizontal: "left" };
+
+  // Row 3: Subtitle / Metadata
+  const subtitleRow = worksheet.addRow([`Generated on ${new Date().toLocaleDateString()}  •  Kids Expense Tracker`]);
+  subtitleRow.height = 18;
+  worksheet.mergeCells("A3:H3");
+  const subtitleCell = worksheet.getCell("A3");
+  subtitleCell.font = { name: "Arial", size: 9, italic: true, color: { argb: `FF${colors.textMuted}` } };
+  subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
+
+  // Row 4: Spacing
+  worksheet.addRow([]);
+  worksheet.getRow(4).height = 10;
+
+  // Row 5: Table Header
+  const headers = [
+    "Child Name",
+    "Date",
+    "Category",
+    "Description",
+    "Amount",
+    "Receipt",
+    "Invoice",
+    "Proof of Payment",
+  ];
+  const headerRow = worksheet.addRow(headers);
+  headerRow.height = 28;
+
+  headerRow.eachCell((cell, colNumber) => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: `FF${colors.primaryDark}` },
+    };
+    cell.font = { name: "Arial", size: 10, bold: true, color: { argb: `FF${colors.white}` } };
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: colNumber === 1 || colNumber === 4 ? "left" : colNumber === 5 ? "right" : "center",
+    };
+    cell.border = {
+      top: { style: "thin", color: { argb: `FF${colors.primaryDark}` } },
+      left: { style: "thin", color: { argb: `FF${colors.primaryDark}` } },
+      bottom: { style: "medium", color: { argb: `FF${colors.primaryMid}` } },
+      right: { style: "thin", color: { argb: `FF${colors.primaryDark}` } },
+    };
+  });
+
+  // Group expenses by child name
   const grouped = selectedExpensesList.reduce((acc, exp) => {
     const kidName = exp.child ? `${exp.child.first_name} ${exp.child.last_name}`.trim() : "Unspecified";
     if (!acc[kidName]) acc[kidName] = [];
@@ -6,252 +115,151 @@ export async function generateHTMLReport(supabase, selectedExpensesList, finalRe
     return acc;
   }, {});
 
-  async function getBase64DataUrl(path) {
-    if (!path) return null;
-    const { data, error } = await supabase.storage.from("receipts").download(path);
-    if (error || !data) return null;
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(data);
-    });
-  }
-
-  let html = `<!DOCTYPE html><html><head><title>${finalReportName}</title>
-  <style>
-    :root {
-      --primary: #4f46e5;
-      --text-main: #111827;
-      --text-muted: #6b7280;
-      --bg-main: #f3f4f6;
-      --bg-card: #ffffff;
-      --border: #e5e7eb;
-    }
-    body {
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      padding: 40px 20px;
-      margin: 0;
-      line-height: 1.5;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      background-color: var(--bg-card);
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid var(--border);
-    }
-    h1 {
-      font-size: 2.25rem;
-      margin: 0 0 10px 0;
-      color: var(--text-main);
-    }
-    .date-badge {
-      display: inline-block;
-      background-color: #f3f4f6;
-      color: var(--text-muted);
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-    .section {
-      margin-bottom: 40px;
-    }
-    h2 {
-      font-size: 1.5rem;
-      color: var(--primary);
-      margin-top: 0;
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    th, td {
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-    th {
-      background-color: #f8fafc;
-      font-weight: 600;
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    tbody tr:hover {
-      background-color: #f9fafb;
-    }
-    .text-right {
-      text-align: right;
-    }
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      background-color: #e0e7ff;
-      color: #3730a3;
-      text-transform: capitalize;
-    }
-    .attachment {
-      color: #059669;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 2px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 20px;
-    }
-    .grand-total {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-    .tfoot-row th {
-      background-color: #f8fafc;
-      color: var(--text-main);
-      font-weight: 700;
-      font-size: 1rem;
-      border-top: 2px solid var(--border);
-      border-bottom: none;
-    }
-    .appendix {
-      margin-top: 60px;
-      padding-top: 40px;
-      border-top: 2px dashed var(--border);
-    }
-    .doc-container {
-      margin-bottom: 50px;
-    }
-    .doc-container h3 {
-      font-size: 1.125rem;
-      color: var(--text-main);
-      margin-bottom: 15px;
-    }
-  </style></head><body>
-  <div class="container">
-    <div class="header">
-      <h1>${finalReportName}</h1>
-      <div class="date-badge">Generated on ${new Date().toLocaleDateString()}</div>
-    </div>`;
-
+  const sortedKidNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
   let grandTotal = 0;
-  const allDocs = [];
-  const urlToDocIndex = new Map();
+  let rowIndexCounter = 0;
 
-  for (const [kidName, exps] of Object.entries(grouped)) {
-    html += `<div class="section">`;
-    html += `<h2>${kidName}</h2>`;
-    html += `<table><thead><tr>
-      <th>Date</th>
-      <th>Category</th>
-      <th>Description</th>
-      <th>Docs Attached</th>
-      <th class="text-right">Amount</th>
-    </tr></thead><tbody>`;
-    
-    let kidTotal = 0;
+  for (const kidName of sortedKidNames) {
+    const exps = grouped[kidName];
+    exps.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    let childTotal = 0;
+    const childStartRow = worksheet.lastRow.number + 1;
+
     for (const exp of exps) {
-      kidTotal += Number(exp.amount);
+      rowIndexCounter++;
+      const amount = Number(exp.amount) || 0;
+      childTotal += amount;
       const date = new Date(exp.created_at).toISOString().slice(0, 10);
-      
-      let docs = [];
-      const descStr = exp.description ? ` - ${exp.description}` : "";
-        
-      const processDoc = async (url, docTypeLabel) => {
-        if (!url) return;
-        
-        let docNum;
-        if (urlToDocIndex.has(url)) {
-          const docIndex = urlToDocIndex.get(url);
-          docNum = docIndex + 1;
-          
-          if (!allDocs[docIndex].label.includes(kidName)) {
-            allDocs[docIndex].label += `, ${kidName}`;
-          }
+      const categoryFormatted = exp.category ? exp.category.charAt(0).toUpperCase() + exp.category.slice(1) : "-";
+
+      const receiptUrl = await getSignedUrl(exp.receipt_url);
+      const invoiceUrl = await getSignedUrl(exp.invoice_url);
+      const proofUrl = await getSignedUrl(exp.proof_of_payment_url);
+
+      const row = worksheet.addRow([
+        kidName,
+        date,
+        categoryFormatted,
+        exp.description || "-",
+        amount,
+        receiptUrl ? { text: "View Receipt", hyperlink: receiptUrl } : "—",
+        invoiceUrl ? { text: "View Invoice", hyperlink: invoiceUrl } : "—",
+        proofUrl ? { text: "View Proof", hyperlink: proofUrl } : "—",
+      ]);
+
+      row.height = 24;
+      const isZebra = rowIndexCounter % 2 === 0;
+
+      row.eachCell((cell, colNumber) => {
+        // Background
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: isZebra ? `FF${colors.bgZebra}` : `FF${colors.white}` },
+        };
+        cell.border = thinBorder;
+
+        // Alignment & Formatting
+        if (colNumber === 1 || colNumber === 4) {
+          cell.alignment = { vertical: "middle", horizontal: "left" };
+          cell.font = { name: "Arial", size: 10, color: { argb: `FF${colors.textDark}` } };
+        } else if (colNumber === 2 || colNumber === 3) {
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.font = { name: "Arial", size: 10, color: { argb: `FF${colors.textDark}` } };
+        } else if (colNumber === 5) {
+          cell.alignment = { vertical: "middle", horizontal: "right" };
+          cell.font = { name: "Arial", size: 10, bold: true, color: { argb: `FF${colors.textDark}` } };
+          cell.numFmt = '"$"#,##0.00';
         } else {
-          const dataUrl = await getBase64DataUrl(url);
-          if (dataUrl) {
-            const docIndex = allDocs.length;
-            urlToDocIndex.set(url, docIndex);
-            docNum = docIndex + 1;
-            allDocs.push({ 
-              label: `${docTypeLabel} for ${kidName}${descStr}`, 
-              dataUrl, 
-              type: dataUrl.startsWith("data:application/pdf") ? "pdf" : "image" 
-            });
+          // Link cells (6, 7, 8)
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          if (cell.value && typeof cell.value === "object" && cell.value.hyperlink) {
+            cell.font = { name: "Arial", size: 10, color: { argb: `FF${colors.linkBlue}` }, underline: true };
+          } else {
+            cell.font = { name: "Arial", size: 10, color: { argb: `FF${colors.textMuted}` } };
           }
         }
-        
-        if (docNum) {
-          docs.push(`${docTypeLabel} [${docNum}]`);
-        }
+      });
+    }
+
+    grandTotal += childTotal;
+    const childEndRow = worksheet.lastRow.number;
+
+    // Subtotal Row for Child
+    const subtotalRow = worksheet.addRow([
+      `Total for ${kidName}`,
+      "",
+      "",
+      "",
+      { formula: `SUM(E${childStartRow}:E${childEndRow})`, result: childTotal },
+      "",
+      "",
+      "",
+    ]);
+    subtotalRow.height = 25;
+
+    subtotalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: `FF${colors.accentSoft}` },
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: `FF${colors.accentBorder}` } },
+        bottom: { style: "thin", color: { argb: `FF${colors.accentBorder}` } },
       };
 
-      await processDoc(exp.receipt_url, "Receipt");
-      await processDoc(exp.invoice_url, "Invoice");
-      await processDoc(exp.proof_of_payment_url, "Proof of Payment");
-
-      const docsStr = docs.length > 0 ? `<span class="attachment">${docs.join(", ")}</span>` : `<span style="color: #9ca3af; font-size: 0.875rem;">None</span>`;
-
-      html += `<tr>
-        <td>${date}</td>
-        <td><span class="badge">${exp.category}</span></td>
-        <td style="color: #4b5563;">${exp.description || "-"}</td>
-        <td>${docsStr}</td>
-        <td class="text-right font-semibold">$${Number(exp.amount).toFixed(2)}</td>
-      </tr>`;
-    }
-    grandTotal += kidTotal;
-    html += `</tbody><tfoot class="tfoot-row"><tr><th colspan="4" class="text-right">Total for ${kidName}:</th><th class="text-right">$${kidTotal.toFixed(2)}</th></tr></tfoot></table>`;
-    html += `</div>`;
-  }
-  
-  html += `<div class="footer">
-    <div style="font-size: 1.25rem; font-weight: 600; color: #4b5563;">Grand Total:</div>
-    <div class="grand-total">$${grandTotal.toFixed(2)}</div>
-  </div>`;
-  
-  if (allDocs.length > 0) {
-    html += `<div class="appendix">
-      <h2>Appendix: Attached Documents</h2>`;
-    allDocs.forEach((doc, index) => {
-      html += `<div class="doc-container">
-        <h3>${index + 1}. ${doc.label}</h3>`;
-
-      if (doc.type === 'pdf') {
-        html += `<embed src="${doc.dataUrl}" width="100%" height="800px" type="application/pdf" />`;
-      } else {
-        html += `<img src="${doc.dataUrl}" alt="${doc.label}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px;" />`;
+      if (colNumber === 1) {
+        cell.font = { name: "Arial", size: 10, bold: true, color: { argb: `FF${colors.primaryDark}` } };
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+      } else if (colNumber === 5) {
+        cell.font = { name: "Arial", size: 10, bold: true, color: { argb: `FF${colors.primaryDark}` } };
+        cell.alignment = { vertical: "middle", horizontal: "right" };
+        cell.numFmt = '"$"#,##0.00';
       }
-      html += `</div>`;
     });
-    html += `</div>`;
+
+    // Blank separator row
+    const spacer = worksheet.addRow([]);
+    spacer.height = 12;
   }
-  
-  html += `</div></body></html>`;
-  return html;
+
+  // Grand Total Row
+  const grandTotalRow = worksheet.addRow([
+    "Grand Total",
+    "",
+    "",
+    "",
+    grandTotal,
+    "",
+    "",
+    "",
+  ]);
+  grandTotalRow.height = 30;
+
+  grandTotalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: `FF${colors.primaryDark}` },
+    };
+    cell.border = {
+      top: { style: "medium", color: { argb: `FF${colors.accentBorder}` } },
+      bottom: { style: "double", color: { argb: `FF${colors.accentBorder}` } },
+    };
+
+    if (colNumber === 1) {
+      cell.font = { name: "Arial", size: 12, bold: true, color: { argb: `FF${colors.white}` } };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+    } else if (colNumber === 5) {
+      cell.font = { name: "Arial", size: 12, bold: true, color: { argb: `FF${colors.white}` } };
+      cell.alignment = { vertical: "middle", horizontal: "right" };
+      cell.numFmt = '"$"#,##0.00';
+    }
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return buffer;
 }
+

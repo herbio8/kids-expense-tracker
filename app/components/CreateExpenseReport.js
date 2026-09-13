@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { generateHTMLReport } from "../utils/reportGenerator";
+import { generateExcelReport } from "../utils/reportGenerator";
 
 export default function CreateExpenseReport({ session, onSuccess }) {
   const [expenses, setExpenses] = useState([]);
@@ -34,19 +34,43 @@ export default function CreateExpenseReport({ session, onSuccess }) {
     }
   }
 
-  async function viewReportFile(reportId) {
-    const path = `${session.user.id}/reports/${reportId}.html`;
-    const { data, error } = await supabase.storage
+  async function viewReportFile(report) {
+    const xlsxPath = `${session.user.id}/reports/${report.id}.xlsx`;
+    let { data, error } = await supabase.storage
       .from("receipts")
-      .createSignedUrl(path, 60, {
-        download: false
+      .createSignedUrl(xlsxPath, 60, {
+        download: `${report.name}.xlsx`
       });
 
     if (error) {
-      alert("Could not find the HTML report file.");
-    } else {
-      window.open(data.signedUrl, "_blank");
+      // Fallback to CSV for older reports
+      const csvPath = `${session.user.id}/reports/${report.id}.csv`;
+      const fallbackCsv = await supabase.storage
+        .from("receipts")
+        .createSignedUrl(csvPath, 60, {
+          download: `${report.name}.csv`
+        });
+
+      if (!fallbackCsv.error) {
+        data = fallbackCsv.data;
+      } else {
+        // Fallback to HTML for oldest reports
+        const htmlPath = `${session.user.id}/reports/${report.id}.html`;
+        const fallbackHtml = await supabase.storage
+          .from("receipts")
+          .createSignedUrl(htmlPath, 60, {
+            download: `${report.name}.html`
+          });
+
+        if (fallbackHtml.error) {
+          alert("Could not find the report file.");
+          return;
+        }
+        data = fallbackHtml.data;
+      }
     }
+    
+    window.open(data.signedUrl, "_blank");
   }
 
   async function deleteReport(reportId) {
@@ -90,9 +114,11 @@ export default function CreateExpenseReport({ session, onSuccess }) {
       }
     }
 
-    // 5. Delete the HTML file from storage
-    const path = `${session.user.id}/reports/${reportId}.html`;
-    await supabase.storage.from("receipts").remove([path]);
+    // 5. Delete any report files (.xlsx, .csv, .html) from storage
+    const xlsxPath = `${session.user.id}/reports/${reportId}.xlsx`;
+    const csvPath = `${session.user.id}/reports/${reportId}.csv`;
+    const htmlPath = `${session.user.id}/reports/${reportId}.html`;
+    await supabase.storage.from("receipts").remove([xlsxPath, csvPath, htmlPath]);
 
     // Refresh the UI
     loadExistingReports();
@@ -211,23 +237,25 @@ export default function CreateExpenseReport({ session, onSuccess }) {
 
       if (updateError) throw updateError;
 
-      // 4. Generate the HTML report blob and upload it to Supabase Storage
+      // 4. Generate the styled Excel report blob and upload it to Supabase Storage
       const selectedExpensesList = expenses.filter(exp => selectedIds.includes(exp.id));
-      const htmlContent = await generateHTMLReport(supabase, selectedExpensesList, finalReportName);
+      const excelBuffer = await generateExcelReport(supabase, selectedExpensesList, finalReportName);
       
-      const blob = new Blob([htmlContent], { type: "text/html" });
-      const path = `${session.user.id}/reports/${reportData.id}.html`;
+      const blob = new Blob([excelBuffer], { 
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      });
+      const path = `${session.user.id}/reports/${reportData.id}.xlsx`;
 
       const { error: uploadError } = await supabase.storage
         .from("receipts")
         .upload(path, blob, {
-          contentType: "text/html; charset=utf-8",
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           upsert: false
         });
 
       if (uploadError) {
-        console.error("Failed to upload HTML report to storage", uploadError);
-        alert("The report was generated in the database, but the HTML file failed to upload.");
+        console.error("Failed to upload Excel report to storage", uploadError);
+        alert("The report was generated in the database, but the spreadsheet file failed to upload.");
       }
 
       if (onSuccess) onSuccess();
@@ -396,10 +424,10 @@ export default function CreateExpenseReport({ session, onSuccess }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => viewReportFile(report.id)}
+                    onClick={() => viewReportFile(report)}
                     className="rounded-md bg-accent-soft px-3 py-1.5 text-xs font-semibold text-primary-strong hover:bg-border transition"
                   >
-                    View Report
+                    Download Spreadsheet
                   </button>
                   <button
                     onClick={() => deleteReport(report.id)}
